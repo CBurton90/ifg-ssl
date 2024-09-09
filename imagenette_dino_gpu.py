@@ -38,7 +38,7 @@ use_bn_head = False # use batch norm in head
 norm_last_layer = True #  normalize the last layer of the DINO head, typically set this paramater to False with vit_small and True with vit_base
 
 # dino specific
-warmup_teacher_temp = 0.02 # Initial value for the teacher temperature, Try decreasing it if the training loss does not decrease
+warmup_teacher_temp = 0.03 # Initial value for the teacher temperature, Try decreasing it if the training loss does not decrease
 teacher_temp = 0.04
 warmup_teacher_temp_epochs = 30 # 30 is default?
 
@@ -46,15 +46,15 @@ warmup_teacher_temp_epochs = 30 # 30 is default?
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using {device}')
 
-epochs = 100
-# lr = 0.0005
-lr = 5e-2
-# min_lr = 1e-6
-min_lr=5e-4
+epochs = 101
+#lr = 0.0005
+lr = 1e-3
+#min_lr = 1e-6
+min_lr=1e-5
 warmup_epochs = 10
 weight_decay = 0.04
 weight_decay_end = 0.4
-# momentum_teacher = 0.996 # Base EMA parameter for teacher update. The value is increased to 1 during training with cosine schedule. We recommend setting a higher value with small batches: for example use 0.9995 with batch size of 256.""")
+#momentum_teacher = 0.996 # Base EMA parameter for teacher update. The value is increased to 1 during training with cosine schedule. We recommend setting a higher value with small batches: for example use 0.9995 with batch size of 256.""")
 momentum_teacher = 0.99
 
 #----------------------------------------------------
@@ -107,9 +107,9 @@ for epoch in range(0, epochs):
     running_loss = 0
     counts = 0
 
-    for it, (images, _) in enumerate(tqdm(data_loader)):
+    for it, (batch, _) in enumerate(data_loader):
 
-        images = images.to(device)
+        images = [image.to(device) for image in batch]
 
         it = len(data_loader) * epoch + it  # global training iteration
 
@@ -145,17 +145,18 @@ for epoch in range(0, epochs):
             for param_q, param_k in zip(student.parameters(), teacher.parameters()):
                 param_k.data.mul_(m).add_((1 - m) * param_q.detach().data)
 
+        if it == 0:
+            if epoch % 5 == 0:
+                
+                save_dict = {
+                        'student': student.state_dict(),
+                        'teacher': teacher.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+                        'epoch': epoch + 1,
+                        'dino_loss': dino_loss.state_dict(),
+                        }
+                
+                torch.save(save_dict, 'dino/dino_checkpoints/dino_imagenette_160_ckpt')
+
     epoch_loss = running_loss / counts
     print(f'Epoch {epoch} loss is {epoch_loss}')
-
-    if epoch % 5 == 0:
-
-        save_dict = {
-            'student': student.state_dict(),
-            'teacher': teacher.state_dict(),
-            'optimizer': optimizer.state_dict(),
-            'epoch': epoch + 1,
-            'dino_loss': dino_loss.state_dict(),
-            }
-        
-        torch.save(save_dict, 'dino/dino_checkpoints/dino_imagenette_160_ckpt')
