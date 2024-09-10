@@ -156,7 +156,7 @@ for epoch in range(0, epochs):
                         'dino_loss': dino_loss.state_dict(),
                         }
                 
-                torch.save(save_dict, 'dino/dino_checkpoints/dino_imagenette_160_ckpt')
+                torch.save(save_dict, 'dino/dino_checkpoints/dino_imagenette_160_ckpt.pth')
 
     epoch_loss = running_loss / counts
     print(f'Epoch {epoch} loss is {epoch_loss}')
