@@ -19,6 +19,8 @@ class LinearClassifier(nn.Module):
     
 def train(model, linear_classifier, optimizer, loader, epoch, n, avgpool, device):
     linear_classifier.train()
+    linear_classifier.to(device)
+    model.to(device)
     header = 'Epoch: [{}]'.format(epoch)
 
     running_loss = 0
