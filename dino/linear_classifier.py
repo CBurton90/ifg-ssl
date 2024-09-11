@@ -20,7 +20,11 @@ class LinearClassifier(nn.Module):
 def train(model, linear_classifier, optimizer, loader, epoch, n, avgpool, device):
     linear_classifier.train()
     header = 'Epoch: [{}]'.format(epoch)
-    for (inp, target) in loader:
+
+    running_loss = 0
+    counts = 0
+
+    for it, (inp, target) in enumerate(loader):
         # move to gpu
         inp = inp.to(device)
         target = target.to(device)
@@ -33,16 +37,20 @@ def train(model, linear_classifier, optimizer, loader, epoch, n, avgpool, device
                 output = torch.cat((output.unsqueeze(-1), torch.mean(intermediate_output[-1][:, 1:], dim=1).unsqueeze(-1)), dim=-1)
                 output = output.reshape(output.shape[0], -1)
                 
-            output = linear_classifier(output)
+        output = linear_classifier(output)
 
         # compute cross entropy loss
         loss = nn.CrossEntropyLoss()(output, target)
+        running_loss += loss
+        counts += 1
 
         # compute the gradients
         optimizer.zero_grad()
         loss.backward()
 
-        print(f'loss is {loss}')
+        # print(f'loss is {loss}')
 
         # step
         optimizer.step()
+
+    return running_loss, counts
