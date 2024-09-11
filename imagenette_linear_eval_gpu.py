@@ -44,10 +44,19 @@ train_transform = transforms.Compose([
     transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
+val_transform = transforms.Compose([
+        transforms.Resize(256, interpolation=3),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+    ])
+
 path = untar_data(URLs.IMAGENETTE_160)
 train_dataset = datasets.ImageFolder(root=path/'train', transform=train_transform)
+val_dataset = datasets.ImageFolder(root=path/'val', transform=val_transform)
 
 train_loader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
+val_loader = DataLoader(val_dataset, shuffle=False, batch_size=batch_size, num_workers=num_workers, pin_memory=pin_memory)
 
 # set optimizer
 optimizer = torch.optim.SGD(linear_classifier.parameters(),
@@ -57,10 +66,16 @@ optimizer = torch.optim.SGD(linear_classifier.parameters(),
                             )
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs, eta_min=0)
 
-for epoch in range(0, epochs+1):
+for epoch in range(0, epochs):
 
         total_loss, counts = train(model, linear_classifier, optimizer, train_loader, epoch, n_last_blocks, avgpool_patchtokens, device)
+        val_acc, val_loss, counts = validate(val_loader, model, linear_classifier, n_last_blocks, avgpool_patchtokens, device)
         scheduler.step()
 
         epoch_loss = total_loss / counts
-        print(f'Epoch {epoch} loss is {epoch_loss}')
+        val_loss = val_loss / counts
+        acc = val_acc / counts
+        print(f'Epoch {epoch} of {epochs}')
+        print(f'train loss is {epoch_loss}')
+        print(f'val loss is {val_loss}')
+        print(f'validation accuracy is {val_acc}')
