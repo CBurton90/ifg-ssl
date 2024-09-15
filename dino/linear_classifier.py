@@ -87,11 +87,11 @@ def validate(val_loader, model, linear_classifier, n, avgpool, device):
         running_loss += loss
         counts += 1
 
-        if linear_classifier.module.num_labels >= 5:
-            acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
+        if linear_classifier.num_labels >= 5:
+            acc1, acc5 = accuracy(output, target, topk=(1, 5))
         else:
-            acc1, = utils.accuracy(output, target, topk=(1,))
+            acc1, = accuracy(output, target, topk=(1,))
 
-        running_acc += acc1
+        running_acc += acc1.item()
 
     return running_acc, running_loss, counts

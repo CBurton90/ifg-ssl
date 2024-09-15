@@ -23,7 +23,10 @@ from dino.vision_transformer import DINOHead
 
 # augmentations
 global_crops_scale = (0.4, 1.)
+#global_crops_scale = (0.25, 1.)
 local_crops_scale = (0.05, 0.4)
+#local_crops_scale = (0.05, 0.25)
+#local_crops_number = 8
 local_crops_number = 8
 
 # dataloader
@@ -32,25 +35,28 @@ num_workers = 32
 pin_memory = True #gpu
 
 # model
-model = 'vit_tiny' # embed_dim=192, depth=12, num_heads=3
+model = 'vit_small' # embed_dim=192, depth=12, num_heads=3
 out_dim = 16384 # complex and large datasets values like 65k work well
 use_bn_head = False # use batch norm in head
-norm_last_layer = True #  normalize the last layer of the DINO head, typically set this paramater to False with vit_small and True with vit_base
+#norm_last_layer = True #  normalize the last layer of the DINO head, typically set this paramater to False with vit_small and True with vit_base
+norm_last_layer = True
 
 # dino specific
 warmup_teacher_temp = 0.03 # Initial value for the teacher temperature, Try decreasing it if the training loss does not decrease
+#warmup_teacher_temp = 0.02
 teacher_temp = 0.04
+#teacher_temp = 0.07
 warmup_teacher_temp_epochs = 30 # 30 is default?
 
 # compute
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using {device}')
 
-epochs = 101
+epochs = 301
 #lr = 0.0005
 lr = 1e-3
 #min_lr = 1e-6
-min_lr=1e-5
+min_lr= 1e-5
 warmup_epochs = 10
 weight_decay = 0.04
 weight_decay_end = 0.4
@@ -59,7 +65,8 @@ momentum_teacher = 0.99
 
 #----------------------------------------------------
 
-path = untar_data(URLs.IMAGENETTE_160)
+#path = untar_data(URLs.IMAGENETTE_160)
+path = untar_data(URLs.IMAGENETTE_320)
 
 transform = ImageAugmentationDINO(global_crops_scale, local_crops_scale, local_crops_number)
 train_dataset = datasets.ImageFolder(root=path/'train', transform=transform)
@@ -91,7 +98,7 @@ params_groups = utils.get_params_groups(student)
 optimizer = torch.optim.AdamW(params_groups)  # to use with ViTs
 
 lr_schedule = utils.cosine_scheduler(
-        lr * (batch_size * utils.get_world_size()) / 256.,  # linear scaling rule
+        lr,  # linear scaling rule
         min_lr, epochs, len(data_loader),
         warmup_epochs=warmup_epochs)
 
@@ -107,11 +114,11 @@ for epoch in range(0, epochs):
     running_loss = 0
     counts = 0
 
-    for it, (batch, _) in enumerate(data_loader):
+    for itr, (batch, _) in enumerate(data_loader):
 
         images = [image.to(device) for image in batch]
 
-        it = len(data_loader) * epoch + it  # global training iteration
+        it = len(data_loader) * epoch + itr  # global training iteration
 
         for i, param_group in enumerate(optimizer.param_groups):
             param_group["lr"] = lr_schedule[it]
@@ -135,7 +142,7 @@ for epoch in range(0, epochs):
         param_norms = None
         loss.backward()
 
-        param_norms = utils.clip_gradients(student, 3.0)
+        #param_norms = utils.clip_gradients(student, 3.0)
         utils.cancel_gradients_last_layer(epoch, student, 1)
         optimizer.step()
 
@@ -144,8 +151,8 @@ for epoch in range(0, epochs):
             m = momentum_schedule[it]  # momentum parameter
             for param_q, param_k in zip(student.parameters(), teacher.parameters()):
                 param_k.data.mul_(m).add_((1 - m) * param_q.detach().data)
-
-        if it == 0:
+                
+        if itr == 0:
             if epoch % 5 == 0:
                 
                 save_dict = {
@@ -155,8 +162,8 @@ for epoch in range(0, epochs):
                         'epoch': epoch + 1,
                         'dino_loss': dino_loss.state_dict(),
                         }
-                
-                torch.save(save_dict, 'dino/dino_checkpoints/dino_imagenette_160_ckpt.pth')
+                print('saving checkpoint')
+                torch.save(save_dict, 'dino/dino_checkpoints/dino_imagenette_320_ckpt.pth')
 
     epoch_loss = running_loss / counts
     print(f'Epoch {epoch} loss is {epoch_loss}')

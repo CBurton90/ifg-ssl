@@ -12,21 +12,21 @@ from torch.utils.data import DataLoader
 import dino.vision_transformer as vit
 from dino.linear_classifier import LinearClassifier, train, validate
 
-model = 'vit_tiny' # embed_dim=192, depth=12, num_heads=3
+model = 'vit_small' # embed_dim=192, depth=12, num_heads=3
 n_last_blocks = 4
 avgpool_patchtokens = False
 num_labels = 10
 batch_size= 256
 num_workers= 32
 pin_memory= True
-epochs = 101
-lr = 0.01
+epochs = 201
+lr = 0.001
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 model = vit.__dict__[model](patch_size=16, num_classes=0)
 embed_dim = model.embed_dim * (n_last_blocks + int(avgpool_patchtokens))
 
-state_dict = torch.load('dino/dino_checkpoints/dino_imagenette_160_ckpt.pth', map_location='cpu')
+state_dict = torch.load('dino/dino_checkpoints/dino_imagenette_320_ckpt.pth', map_location='cpu')
 state_dict = state_dict["teacher"]
 
 # remove `module.` prefix
@@ -51,7 +51,7 @@ val_transform = transforms.Compose([
         transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
     ])
 
-path = untar_data(URLs.IMAGENETTE_160)
+path = untar_data(URLs.IMAGENETTE_320)
 train_dataset = datasets.ImageFolder(root=path/'train', transform=train_transform)
 val_dataset = datasets.ImageFolder(root=path/'val', transform=val_transform)
 
@@ -68,14 +68,14 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs, eta_mi
 
 for epoch in range(0, epochs):
 
-        total_loss, counts = train(model, linear_classifier, optimizer, train_loader, epoch, n_last_blocks, avgpool_patchtokens, device)
-        val_acc, val_loss, counts = validate(val_loader, model, linear_classifier, n_last_blocks, avgpool_patchtokens, device)
+        total_loss, t_counts = train(model, linear_classifier, optimizer, train_loader, epoch, n_last_blocks, avgpool_patchtokens, device)
+        val_acc, val_loss, v_counts = validate(val_loader, model, linear_classifier, n_last_blocks, avgpool_patchtokens, device)
         scheduler.step()
 
-        epoch_loss = total_loss / counts
-        val_loss = val_loss / counts
-        acc = val_acc / counts
+        epoch_loss = total_loss / t_counts
+        val_loss = val_loss / v_counts
+        acc = val_acc / v_counts
         print(f'Epoch {epoch} of {epochs}')
         print(f'train loss is {epoch_loss}')
         print(f'val loss is {val_loss}')
-        print(f'validation accuracy is {val_acc}')
+        print(f'validation accuracy is {acc}')

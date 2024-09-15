@@ -1,0 +1,19 @@
+nohup: ignoring input
+Using cuda
+/home/conradb/.conda/envs/torch/lib/python3.10/site-packages/torch/nn/utils/weight_norm.py:134: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+Epoch 0 loss is 8.234244346618652
+Epoch 1 loss is 5.517996311187744
+Epoch 2 loss is 5.583330154418945
+Epoch 3 loss is 7.169531345367432
+Epoch 4 loss is 8.50457763671875
+Epoch 5 loss is 9.017491340637207
+Epoch 6 loss is 9.063481330871582
+Epoch 7 loss is 9.018725395202637
+Epoch 8 loss is 9.056048393249512
+Epoch 9 loss is 9.045559883117676
+Epoch 10 loss is 8.960372924804688
+Epoch 11 loss is 8.834535598754883
+Epoch 12 loss is 8.728782653808594
+Epoch 13 loss is 8.647610664367676
+Epoch 14 loss is 8.577640533447266
