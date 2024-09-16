@@ -20,13 +20,13 @@ batch_size= 256
 num_workers= 32
 pin_memory= True
 epochs = 201
-lr = 0.001
+lr = 0.01
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 model = vit.__dict__[model](patch_size=16, num_classes=0)
 embed_dim = model.embed_dim * (n_last_blocks + int(avgpool_patchtokens))
 
-state_dict = torch.load('dino/dino_checkpoints/dino_imagenette_320_ckpt.pth', map_location='cpu')
+state_dict = torch.load('dino/dino_checkpoints/dino_imagenette_320_ckpt_v1.pth', map_location='cpu')
 state_dict = state_dict["teacher"]
 
 # remove `module.` prefix
