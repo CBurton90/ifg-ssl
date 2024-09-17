@@ -1,3 +1,5 @@
 dino/__pycache__/*.pyc
 dino/dino_checkpoints/*
+hephaestus/*
 !dino/dino_checkpoints/.gitkeep
+!hephaestus/.gitkeep
