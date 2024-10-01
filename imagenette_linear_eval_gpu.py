@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 import dino.vision_transformer as vit
 from dino.linear_classifier import LinearClassifier, train, validate
 
-model = 'vit_small' # embed_dim=192, depth=12, num_heads=3
+model = 'vit_small' # embed_dim=384, depth=12, num_heads=6
 n_last_blocks = 4
 avgpool_patchtokens = False
 num_labels = 10

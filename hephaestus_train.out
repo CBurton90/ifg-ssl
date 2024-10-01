@@ -1,0 +1,132 @@
+/cm/local/apps/slurm/var/spool/job99040/slurm_script: line 13: cd: git/ifg-ssl/: No such file or directory
+/home/conradb/.conda/envs/torch/lib/python3.10/site-packages/torch/nn/utils/weight_norm.py:134: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+/share/home/conradb/git/ifg-ssl/hephaestus_dino_gpu.py:141: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler()
+Using cuda
+OrderedDict([(0, 128315), (1, 257), (2, 314), (3, 698), (4, 17), (5, 33), (6, 29)])
+[7.793321123796906e-06, 0.0038910505836575876, 0.0031847133757961785, 0.0014326647564469914, 0.058823529411764705, 0.030303030303030304, 0.034482758620689655]
+/share/home/conradb/git/ifg-ssl/hephaestus_dino_gpu.py:160: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast():
+saving checkpoint
+Epoch 0 loss is 9.677239425568713
+Epoch 1 loss is 8.197919826733736
+Epoch 2 loss is 6.985284578187663
+Epoch 3 loss is 6.747722590864883
+Epoch 4 loss is 6.188155716115778
+saving checkpoint
+Epoch 5 loss is 5.701497262645616
+Epoch 6 loss is 5.574576947057671
+Epoch 7 loss is 5.542412483645051
+Epoch 8 loss is 5.488080203768764
+Epoch 9 loss is 4.611100181289341
+saving checkpoint
+Epoch 10 loss is 4.017513759993753
+Epoch 11 loss is 3.8290375819790503
+Epoch 12 loss is 3.8950398001275044
+Epoch 13 loss is 4.127511726537712
+Epoch 14 loss is 4.307625291375775
+saving checkpoint
+Epoch 15 loss is 4.4182366820663335
+Epoch 16 loss is 4.573080443582045
+Epoch 17 loss is 4.584725635325014
+Epoch 18 loss is 4.646409674595467
+Epoch 19 loss is 4.728910816516801
+saving checkpoint
+Epoch 20 loss is 4.851407033181474
+Epoch 21 loss is 4.900227349737416
+Epoch 22 loss is 4.890700760566199
+Epoch 23 loss is 4.8921186367984815
+Epoch 24 loss is 4.8331775632300396
+saving checkpoint
+Epoch 25 loss is 4.814033077639554
+Epoch 26 loss is 4.727956157899186
+Epoch 27 loss is 4.698985794316167
+Epoch 28 loss is 4.727974480791055
+Epoch 29 loss is 4.710128932131138
+saving checkpoint
+Epoch 30 loss is 4.609142701145218
+Epoch 31 loss is 4.318815327444566
+Epoch 32 loss is 4.075409916078621
+Epoch 33 loss is 4.028894570505195
+Epoch 34 loss is 4.125098612939888
+saving checkpoint
+Epoch 35 loss is 4.0734844641252
+Epoch 36 loss is 3.8925318053588565
+Epoch 37 loss is 3.519592689902415
+Epoch 38 loss is 3.1634398788331524
+Epoch 39 loss is 2.9570611668198477
+saving checkpoint
+Epoch 40 loss is 2.8271902399100806
+Epoch 41 loss is 2.7575920325494097
+Epoch 42 loss is 2.7135866823874917
+Epoch 43 loss is 2.75579715811688
+Epoch 44 loss is 2.767275448373184
+saving checkpoint
+Epoch 45 loss is 2.814165306656728
+Epoch 46 loss is 2.8647077992970766
+Epoch 47 loss is 2.9313849521719892
+Epoch 48 loss is 3.0016829779025596
+Epoch 49 loss is 3.06344278857642
+saving checkpoint
+Epoch 50 loss is 3.1417166498809936
+Epoch 51 loss is 3.256455458200025
+Epoch 52 loss is 3.334625724747247
+Epoch 53 loss is 3.3275252627760996
+Epoch 54 loss is 3.301504349991267
+saving checkpoint
+Epoch 55 loss is 3.34369941379713
+Epoch 56 loss is 3.3562893905187314
+Epoch 57 loss is 3.3824321139942515
+Epoch 58 loss is 3.4220825702305366
+Epoch 59 loss is 3.455768156428582
+saving checkpoint
+Epoch 60 loss is 3.5072697876941543
+Epoch 61 loss is 3.5750416079057534
+Epoch 62 loss is 3.6984663358318945
+Epoch 63 loss is 3.859027363566071
+Epoch 64 loss is 4.071524497548582
+saving checkpoint
+Epoch 65 loss is 4.258450972704077
+Epoch 66 loss is 4.40967112897413
+Epoch 67 loss is 4.494681053953208
+Epoch 68 loss is 4.513065297141848
+Epoch 69 loss is 4.502755172167842
+saving checkpoint
+Epoch 70 loss is 4.29683346003883
+Epoch 71 loss is 3.9447394114709184
+Epoch 72 loss is 3.391959002837833
+Epoch 73 loss is 2.8545239094217774
+Epoch 74 loss is 2.4995255913187866
+saving checkpoint
+Epoch 75 loss is 2.2392625379939326
+Epoch 76 loss is 2.071503855729763
+Epoch 77 loss is 1.9354524878645132
+Epoch 78 loss is 1.847591476242533
+Epoch 79 loss is 1.7885175924527315
+saving checkpoint
+Epoch 80 loss is 1.7275921217066497
+Epoch 81 loss is 1.6796566174906704
+Epoch 82 loss is 1.6537263685535537
+Epoch 83 loss is 1.6334834749048406
+Epoch 84 loss is 1.609265073721588
+saving checkpoint
+Epoch 85 loss is 1.5998733062517974
+Epoch 86 loss is 1.5794431630801777
+Epoch 87 loss is 1.5571040574740986
+Epoch 88 loss is 1.5648098394804792
+Epoch 89 loss is 1.537503718387468
+saving checkpoint
+Epoch 90 loss is 1.5404635745546091
+Epoch 91 loss is 1.530961496792292
+Epoch 92 loss is 1.5222251059509548
+Epoch 93 loss is 1.5046816183173137
+Epoch 94 loss is 1.515749585722746
+saving checkpoint
+Epoch 95 loss is 1.496964012210077
+Epoch 96 loss is 1.4971346270896702
+Epoch 97 loss is 1.491498382901957
+Epoch 98 loss is 1.4894528405468455
+Epoch 99 loss is 1.468397559148992
+saving checkpoint
+Epoch 100 loss is 1.4790335568514736

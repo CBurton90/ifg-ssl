@@ -2,16 +2,16 @@
 import sys
 sys.path.append("/home/conradb/git/ifg-ssl")
 from PIL import Image
+from collections import defaultdict, Counter, OrderedDict
 import matplotlib.pyplot as plt
 import numpy as np
-import tqdm as tqdm
+from sklearn.model_selection import train_test_split
 import math
 
-# pytorch + fastai imports
-from fastai.vision.all import *
+# pytorch imports
 import torch
-from torch.utils.data import DataLoader
-from torchvision import datasets
+from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
+from torchvision import datasets, transforms
 import torchvision.transforms.functional as F
 from torchvision.utils import make_grid
 
@@ -21,6 +21,7 @@ from dino.loss import DINOLoss
 import dino.utils as utils
 import dino.vision_transformer as vit
 from dino.vision_transformer import DINOHead
+from dino.image_folder_tar import ImageFolderTar
 
 # augmentations
 global_crops_scale = (0.4, 1.)
@@ -43,26 +44,26 @@ use_bn_head = False # use batch norm in head
 norm_last_layer = True
 
 # dino specific
-warmup_teacher_temp = 0.03 # Initial value for the teacher temperature, Try decreasing it if the training loss does not decrease
-#warmup_teacher_temp = 0.02
+#warmup_teacher_temp = 0.03 # Initial value for the teacher temperature, Try decreasing it if the training loss does not decrease
+warmup_teacher_temp = 0.02
+#teacher_temp = 0.04
 teacher_temp = 0.04
-#teacher_temp = 0.07
-warmup_teacher_temp_epochs = 30 # 30 is default?
+warmup_teacher_temp_epochs = 10 # 30 is default?
 
 # compute
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using {device}')
 
-epochs = 301
+epochs = 101
 #lr = 0.0005
-lr = 1e-3
+lr = 0.000001
 #min_lr = 1e-6
-min_lr= 1e-5
+min_lr= 0.0000001
 warmup_epochs = 10
 weight_decay = 0.04
 weight_decay_end = 0.4
-#momentum_teacher = 0.996 # Base EMA parameter for teacher update. The value is increased to 1 during training with cosine schedule. We recommend setting a higher value with small batches: for example use 0.9995 with batch size of 256.""")
-momentum_teacher = 0.99
+momentum_teacher = 0.996 # Base EMA parameter for teacher update. The value is increased to 1 during training with cosine schedule. We recommend setting a higher value with small batches: for example use 0.9995 with batch size of 256.""")
+#momentum_teacher = 0.99
 
 
 transform = IfgAugmentationDINO(global_crops_scale, local_crops_scale, local_crops_number)
@@ -70,7 +71,7 @@ dataset = datasets.ImageFolder(root='/scratch/SDF25/Hephaestus_Classification/In
 
 # Stratified Sampling for train and val
 train_idx, validation_idx = train_test_split(np.arange(len(dataset)),
-                                             test_size=0.2,
+                                             test_size=0.4,
                                              random_state=999,
                                              shuffle=True,
                                              stratify=dataset.targets)
@@ -107,8 +108,8 @@ teacher = vit.__dict__[model](patch_size=16)
 embed_dim = student.embed_dim
 
 # multi-crop wrapper handles forward with inputs of different resolutions
-student = utils.MultiCropWrapper(student, DINOHead(embed_dim, out_dim, use_bn=use_bn_head, norm_last_layer=norm_last_layer))
-teacher = utils.MultiCropWrapper(teacher, DINOHead(embed_dim, out_dim, use_bn=use_bn_head))
+student = utils.MultiCropWrapper(student, DINOHead(embed_dim, out_dim, use_bn=use_bn_head, norm_last_layer=norm_last_layer)).to(device)
+teacher = utils.MultiCropWrapper(teacher, DINOHead(embed_dim, out_dim, use_bn=use_bn_head)).to(device)
 teacher.load_state_dict(student.state_dict())
 
 # there is no backpropagation through the teacher, so no need for gradients
@@ -137,6 +138,8 @@ wd_schedule = utils.cosine_scheduler(weight_decay, weight_decay_end, epochs, len
 # momentum parameter is increased to 1. during training with a cosine schedule
 momentum_schedule = utils.cosine_scheduler(momentum_teacher, 1, epochs, len(train_dataloader))
 
+scaler = torch.cuda.amp.GradScaler()
+
 for epoch in range(0, epochs):
 
     running_loss = 0
@@ -154,11 +157,12 @@ for epoch in range(0, epochs):
                 param_group["weight_decay"] = wd_schedule[it]
 
         # teacher and student forward passes + compute dino loss
-        teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
-        student_output = student(images)
-        loss = dino_loss(student_output, teacher_output, epoch)
+        with torch.cuda.amp.autocast():
+            teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
+            student_output = student(images)
+            loss = dino_loss(student_output, teacher_output, epoch)
 
-        running_loss += loss
+        running_loss += loss.detach().cpu().numpy()
         counts += 1
 
         if not math.isfinite(loss.item()):
@@ -168,11 +172,16 @@ for epoch in range(0, epochs):
         # student update
         optimizer.zero_grad()
         param_norms = None
-        loss.backward()
+        scaler.scale(loss).backward()
+        #loss.backward()
 
         #param_norms = utils.clip_gradients(student, 3.0)
         utils.cancel_gradients_last_layer(epoch, student, 1)
-        optimizer.step()
+
+        scaler.step(optimizer)
+        scaler.update()
+
+        #optimizer.step()
 
         # EMA update for the teacher
         with torch.no_grad():
@@ -191,7 +200,7 @@ for epoch in range(0, epochs):
                         'dino_loss': dino_loss.state_dict(),
                         }
                 print('saving checkpoint')
-                torch.save(save_dict, 'dino/dino_checkpoints/hephaestus_ViTS16_ckpt_v1.pth')
+                torch.save(save_dict, 'dino/dino_checkpoints/t60pct_hephaestus_ViTS16_ckpt_v1.pth')
 
     epoch_loss = running_loss / counts
     print(f'Epoch {epoch} loss is {epoch_loss}')

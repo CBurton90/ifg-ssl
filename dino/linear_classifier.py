@@ -31,6 +31,7 @@ def train(model, linear_classifier, optimizer, loader, epoch, n, avgpool, device
         # move to gpu
         inp = inp.to(device)
         target = target.to(device)
+        # print(target)
 
         # forward for ViT
         with torch.no_grad():
@@ -41,6 +42,7 @@ def train(model, linear_classifier, optimizer, loader, epoch, n, avgpool, device
                 output = output.reshape(output.shape[0], -1)
                 
         output = linear_classifier(output)
+        # print(output)
 
         # compute cross entropy loss
         loss = nn.CrossEntropyLoss()(output, target)
