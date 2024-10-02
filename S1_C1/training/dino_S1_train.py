@@ -1,0 +1,156 @@
+# standard python imports
+import sys
+sys.path.append("/home/conradb/git/ifg-ssl")
+import math
+from collections import Counter, OrderedDict
+import tqdm
+
+# torch imports
+import torch
+import torchvision
+from torch.utils.data import DataLoader, WeightedRandomSampler
+from torchvision import datasets
+
+# local module imports
+from S1_C1.configs.config import load_global_config
+from S1_C1.utils.utils import calculate_sampler_weights
+from dino.augment import IfgAugmentationDINO
+from dino.loss import DINOLoss
+import dino.utils as utils
+import dino.vision_transformer as vit
+from dino.vision_transformer import DINOHead
+
+
+def train_dino(config):
+    device = torch.device(config.train.device)
+
+    transform = IfgAugmentationDINO(tuple(config.crops.global_crops_scale),
+                                tuple(config.crops.local_crops_scale),
+                                config.crops.local_crops_number,
+                                tuple(config.data.mean),
+                                tuple(config.data.std))
+    
+    dataset = datasets.ImageFolder(root=config.data.data_path, transform=transform)
+
+    sample_weights = calculate_sampler_weights(dataset)
+
+    train_dataloader = DataLoader(dataset,
+                              sampler=sampler,
+                              batch_size=config.train.batch_size,
+                              num_workers=config.train.num_workers,
+                              pin_memory=config.train.pin_memory,
+                              drop_last=True)
+    
+    student = vit.__dict__[config.model.model](patch_size=config.model.patch_size, drop_path_rate=0.1)
+    teacher = vit.__dict__[config.model.model](patch_size=config.model.patch_size)
+    embed_dim = student.embed_dim
+
+    # multi-crop wrapper handles forward with inputs of different resolutions
+    student = utils.MultiCropWrapper(student, DINOHead(embed_dim, config.model.out_dim, use_bn=config.model.use_bn_head, norm_last_layer=config.model.norm_last_layer))
+    teacher = utils.MultiCropWrapper(teacher, DINOHead(embed_dim, config.model.out_dim, use_bn=config.model.use_bn_head))
+
+    student, teacher = student.to(device), teacher.to(device)
+    
+    teacher.load_state_dict(student.state_dict())
+
+    for p in teacher.parameters():
+        p.requires_grad = False
+
+    dino_loss = DINOLoss(
+        config.model.out_dim,
+        config.crops.local_crops_number + 2,  # total number of crops = 2 global crops + local_crops_number
+        config.DINO.warmup_teacher_temp,
+        config.DINO.teacher_temp,
+        config.DINO.warmup_teacher_temp_epochs,
+        config.train.epochs,
+        ).to(device)
+
+    params_groups = utils.get_params_groups(student)
+    optimizer = torch.optim.AdamW(params_groups)  # to use with ViTs
+
+    lr_schedule = utils.cosine_scheduler(config.train.lr, config.train.min_lr, config.train.epochs, len(train_dataloader), warmup_epochs=config.train.warmup_epochs)
+
+    wd_schedule = utils.cosine_scheduler(config.train.weight_decay, config.train.weight_decay_end, config.train.epochs, len(train_dataloader))
+
+    # momentum parameter is increased to 1. during training with a cosine schedule
+    momentum_schedule = utils.cosine_scheduler(config.DINO.momentum_teacher, 1, config.train.epochs, len(train_dataloader))
+    
+    fp16_scaler = None
+    if config.train.use_fp16:
+        fp16_scaler = torch.cuda.amp.GradScaler()
+
+    for epoch in range(0, config.train.epochs):
+
+        epoch_loss = train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, fp16_scaler, config)
+        print(epoch_loss)
+
+        
+
+def train_one_epoch(student, teacher, dino_loss, data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, fp16_scaler, config):
+
+    running_loss = 0
+    counts = 0
+
+    for it, (batch, _) in tqdm(enumerate(train_dataloader), total= len(train_dataloader)):
+
+        it = len(train_dataloader) * epoch + it  # global training iteration
+
+        for i, param_group in enumerate(optimizer.param_groups):
+            param_group["lr"] = lr_schedule[it]
+            if i == 0:  # only the first group is regularized
+                param_group["weight_decay"] = wd_schedule[it]
+        
+        # move images to gpu
+        images = [image.to(torch.device(config.train.device)) for image in batch]
+
+        # teacher and student forward passes + compute dino loss
+        with torch.cuda.amp.autocast(fp16_scaler is not None):
+            teacher_output = teacher(images[:2])  # only the 2 global views pass through the teacher
+            student_output = student(images)
+            loss = dino_loss(student_output, teacher_output, epoch)
+
+        running_loss += loss.detach().cpu().numpy()
+        counts += 1
+
+        if not math.isfinite(loss.item()):
+            print("Loss is {}, stopping training".format(loss.item()), force=True)
+            sys.exit(1)
+
+        # student update
+        optimizer.zero_grad()
+        param_norms = None
+
+        # if not using fp16
+        if fp16_scaler is None:
+            loss.backward()
+            if config.train.clip_grad:
+                param_norms = utils.clip_gradients(student, config.train.clip_grad)
+            utils.cancel_gradients_last_layer(epoch, student, config.train.freeze_last_layer)
+            optimizer.step()
+        # if using fp16
+        else:
+            fp16_scaler.scale(loss).backward()
+            if config.train.clip_grad:
+                fp16_scaler.unscale_(optimizer)  # unscale the gradients of optimizer's assigned params in-place
+                param_norms = utils.clip_gradients(student, config.train.clip_grad)
+            utils.cancel_gradients_last_layer(epoch, student, config.train.freeze_last_layer)
+            fp16_scaler.step(optimizer)
+            fp16_scaler.update()
+
+        # EMA update for the teacher
+        with torch.no_grad():
+            m = momentum_schedule[it]  # momentum parameter
+            for param_q, param_k in zip(student.parameters(), teacher.parameters()):
+                param_k.data.mul_(m).add_((1 - m) * param_q.detach().data)
+
+    epoch_loss = running_loss / counts
+
+    return epoch_loss
+
+
+if __name__ == '__main__':
+    import os
+    print(os.getcwd())
+    sys.path.append("/home/conradb/git/ifg-ssl")
+    config = load_global_config('S1_C1/configs/dino_S1_train.toml')
+    train_dino(config)

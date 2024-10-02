@@ -54,18 +54,18 @@ class ImageAugmentationDINO(object):
         return crops
     
 class IfgAugmentationDINO(object):
-    def __init__(self, global_crops_scale, local_crops_scale, local_crops_number):
+    def __init__(self, global_crops_scale, local_crops_scale, local_crops_number, mean, std):
         flip_and_elastictf = transforms.Compose([
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.5),
-            #transforms.ElasticTransform(alpha=15.0),
+            transforms.ElasticTransform(alpha=100.0),
             # transforms.RandomApply([transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.2, hue=0.1)], p=0.8),
             # transforms.RandomGrayscale(p=0.2),
             ])
         
         normalize = transforms.Compose([
             transforms.ToTensor(),
-            # transforms.Normalize((0.6864, 0.5986, 0.5747), (0.3004, 0.2943, 0.2855)), #Hesphaestus Interferogram means + std's for train dataset mean: tensor([0.6864, 0.5986, 0.5747]) std: tensor([0.3004, 0.2943, 0.2855])
+            transforms.Normalize(mean, std), #Hesphaestus Interferogram means + std's for train dataset mean: tensor([0.6864, 0.5986, 0.5747]) std: tensor([0.3004, 0.2943, 0.2855])
             ])
         
         # first global crop
