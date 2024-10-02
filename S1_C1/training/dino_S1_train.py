@@ -3,7 +3,7 @@ import sys
 sys.path.append("/home/conradb/git/ifg-ssl")
 import math
 from collections import Counter, OrderedDict
-import tqdm
+from tqdm import tqdm
 
 # torch imports
 import torch
@@ -23,6 +23,7 @@ from dino.vision_transformer import DINOHead
 
 def train_dino(config):
     device = torch.device(config.train.device)
+    print(f'Using {device}')
 
     transform = IfgAugmentationDINO(tuple(config.crops.global_crops_scale),
                                 tuple(config.crops.local_crops_scale),
@@ -33,6 +34,9 @@ def train_dino(config):
     dataset = datasets.ImageFolder(root=config.data.data_path, transform=transform)
 
     sample_weights = calculate_sampler_weights(dataset)
+
+    # Create WeightedRandomSampler
+    sampler = WeightedRandomSampler(sample_weights, len(sample_weights))
 
     train_dataloader = DataLoader(dataset,
                               sampler=sampler,
@@ -78,6 +82,8 @@ def train_dino(config):
     fp16_scaler = None
     if config.train.use_fp16:
         fp16_scaler = torch.cuda.amp.GradScaler()
+    
+    print('Commencing training')
 
     for epoch in range(0, config.train.epochs):
 
@@ -86,7 +92,7 @@ def train_dino(config):
 
         
 
-def train_one_epoch(student, teacher, dino_loss, data_loader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, fp16_scaler, config):
+def train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, fp16_scaler, config):
 
     running_loss = 0
     counts = 0
@@ -149,8 +155,5 @@ def train_one_epoch(student, teacher, dino_loss, data_loader, optimizer, lr_sche
 
 
 if __name__ == '__main__':
-    import os
-    print(os.getcwd())
-    sys.path.append("/home/conradb/git/ifg-ssl")
-    config = load_global_config('S1_C1/configs/dino_S1_train.toml')
+    config = load_global_config('configs/dino_S1_train.toml')
     train_dino(config)

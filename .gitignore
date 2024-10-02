@@ -1,4 +1,4 @@
-dino/__pycache__/*.pyc
+*.pyc
 dino/dino_checkpoints/*
 hephaestus/*
 !dino/dino_checkpoints/.gitkeep
