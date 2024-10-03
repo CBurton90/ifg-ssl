@@ -178,3 +178,19 @@ def accuracy(output, target, topk=(1,)):
     correct = pred.eq(target.reshape(1, -1).expand_as(pred))
     return [correct[:k].reshape(-1).float().sum(0) * 100. / batch_size for k in topk]
 
+def multi_scale(samples, model):
+    v = None
+    for s in [1, 1/2**(1/2), 1/2]:  # we use 3 different scales
+        if s == 1:
+            inp = samples.clone()
+        else:
+            inp = nn.functional.interpolate(samples, scale_factor=s, mode='bilinear', align_corners=False)
+        feats = model(inp).clone()
+        if v is None:
+            v = feats
+        else:
+            v += feats
+    v /= 3
+    v /= v.norm()
+    return v
+

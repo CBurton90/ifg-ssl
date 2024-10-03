@@ -99,7 +99,7 @@ def train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr
     running_loss = 0
     counts = 0
 
-    for it, (batch, _) in tqdm(enumerate(train_dataloader), total= len(train_dataloader)):
+    for it, (batch, label) in tqdm(enumerate(train_dataloader), total= len(train_dataloader)):
 
         it = len(train_dataloader) * epoch + it  # global training iteration
 
@@ -110,6 +110,10 @@ def train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr
         
         # move images to gpu
         images = [image.to(torch.device(config.train.device)) for image in batch]
+
+        print(images[0].shape)
+        print(images[3].shape)
+        print(label.shape)
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
@@ -157,5 +161,5 @@ def train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr
 
 
 if __name__ == '__main__':
-    config = load_global_config('configs/dino_S1_train.toml')
+    config = load_global_config('configs/dino_S1_train_cpu_only.toml')
     train_dino(config)
