@@ -87,6 +87,8 @@ def train_dino(config):
 
     for epoch in range(0, config.train.epochs):
 
+        print(f'Epoch {epoch}/{config.train.epochs}')
+
         epoch_loss = train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, fp16_scaler, config)
         print(epoch_loss)
 
