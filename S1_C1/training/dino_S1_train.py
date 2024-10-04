@@ -15,6 +15,7 @@ from torchvision import datasets
 from S1_C1.configs.config import load_global_config
 from S1_C1.utils.utils import calculate_sampler_weights
 from dino.augment import IfgAugmentationDINO
+from dino.knn_evaluation import extract_features, knn_classifier
 from dino.loss import DINOLoss
 import dino.utils as utils
 import dino.vision_transformer as vit
@@ -31,7 +32,7 @@ def train_dino(config):
                                 tuple(config.data.mean),
                                 tuple(config.data.std))
     
-    dataset = datasets.ImageFolder(root=config.data.data_path, transform=transform)
+    dataset = datasets.ImageFolder(root=config.data.train_path, transform=transform)
 
     sample_weights = calculate_sampler_weights(dataset)
 
@@ -91,6 +92,20 @@ def train_dino(config):
 
         epoch_loss = train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, fp16_scaler, config)
         print(epoch_loss)
+
+        if epoch == 0:
+            save_dict = {
+                'student': student.state_dict(),
+                'teacher': teacher.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'epoch': epoch + 1,
+                'dino_loss': dino_loss.state_dict(),
+                }
+            print('saving checkpoint')
+            torch.save(save_dict, config.model.checkpoint_path)
+
+            extract_feature_pipeline(config)
+
 
         
 
@@ -158,6 +173,66 @@ def train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr
     epoch_loss = running_loss / counts
 
     return epoch_loss
+
+
+
+def extract_feature_pipeline(config):
+    
+    transform = pth_transforms.Compose([
+        pth_transforms.Resize(256, interpolation=3),
+        pth_transforms.CenterCrop(224),
+        pth_transforms.ToTensor(),
+        pth_transforms.Normalize(tuple(config.data.mean), tuple(config.data.std)),
+    ])
+    train_dataset = datasets.ImageFolder(root=config.data.train_path, transform=transform)
+    val_dataset = datasets.ImageFolder(root=config.data.val_path, transform=transform)
+    data_loader_train = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=config.train.batch_size,
+        num_workers=config.train.num_workers,
+        pin_memory=True,
+        drop_last=False,
+    )
+    data_loader_val = torch.utils.data.DataLoader(
+        val_dataset,
+        batch_size=config.train.val_batch_size,
+        num_workers=config.train.num_workers,
+        pin_memory=True,
+        drop_last=False,
+    )
+
+    # ============ building network ... ============
+    eval_model = vit.__dict__[config.model.model](patch_size=config.model.patch_size)
+    eval_model.to(config.train.device)
+    
+    state_dict = torch.load(config.model.checkpoint_path, map_location="cpu")
+    state_dict = state_dict['teacher']
+    # remove `module.` prefix
+    state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+    # remove `backbone.` prefix induced by multicrop wrapper
+    state_dict = {k.replace("backbone.", ""): v for k, v in state_dict.items()}
+    msg = eval_model.load_state_dict(state_dict, strict=False)
+    
+    eval_model.eval()
+
+    print("Extracting features for train set...")
+    train_features = extract_features(eval_model, data_loader_train, args.use_cuda)
+    print("Extracting features for val set...")
+    test_features = extract_features(eval_model, data_loader_val, args.use_cuda)
+
+    if utils.get_rank() == 0:
+        train_features = nn.functional.normalize(train_features, dim=1, p=2)
+        test_features = nn.functional.normalize(test_features, dim=1, p=2)
+
+    train_labels = torch.tensor([s[-1] for s in dataset_train.samples]).long()
+    test_labels = torch.tensor([s[-1] for s in dataset_val.samples]).long()
+    # save features and labels
+    if args.dump_features and dist.get_rank() == 0:
+        torch.save(train_features.cpu(), os.path.join(args.dump_features, "trainfeat.pth"))
+        torch.save(test_features.cpu(), os.path.join(args.dump_features, "testfeat.pth"))
+        torch.save(train_labels.cpu(), os.path.join(args.dump_features, "trainlabels.pth"))
+        torch.save(test_labels.cpu(), os.path.join(args.dump_features, "testlabels.pth"))
+    return train_features, test_features, train_labels, test_labels
 
 
 if __name__ == '__main__':

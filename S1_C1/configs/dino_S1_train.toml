@@ -1,5 +1,6 @@
 [data]
-data_path = '/scratch/SDF25/DeepCube_UC4a/S1/Train/' # enter your path for the S1 train set
+train_path = '/scratch/SDF25/DeepCube_UC4a/S1/Train/' # enter your path for the S1 train set
+val_path = '/scratch/SDF25/DeepCube_UC4a/S1/Test/'
 mean = [0.5118, 0.5118, 0.5118] #S1 mean greyscale
 std = [0.2717, 0.2717, 0.2717] #S1 std greyscale
 
@@ -14,6 +15,7 @@ patch_size = 16
 out_dim = 16384 # complex and large datasets values like 65k work well
 use_bn_head = false # use batch norm in head
 norm_last_layer = true #  normalize the last layer of the DINO head, typically set this paramater to False with vit_small and True with vit_base
+checkpoint_path = 'S1_C1/model_checkpoints/test.pth'
 
 [DINO]
 warmup_teacher_temp = 0.01 # Initial value for the teacher temperature, Try decreasing it if the training loss does not decrease
@@ -30,6 +32,7 @@ warmup_epochs = 10
 weight_decay = 0.04
 weight_decay_end = 0.4
 batch_size = 256
+val_batch_size = 32
 num_workers = 32
 pin_memory = true
 use_fp16 = true
