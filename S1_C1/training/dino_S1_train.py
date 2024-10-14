@@ -9,7 +9,7 @@ from tqdm import tqdm
 import torch
 import torchvision
 from torch.utils.data import DataLoader, WeightedRandomSampler
-from torchvision import datasets
+from torchvision import datasets, transforms
 
 # local module imports
 from S1_C1.configs.config import load_global_config
@@ -91,9 +91,9 @@ def train_dino(config):
         print(f'Epoch {epoch}/{config.train.epochs}')
 
         epoch_loss = train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr_schedule, wd_schedule, momentum_schedule, epoch, fp16_scaler, config)
-        print(epoch_loss)
+        print(f'Epoch loss is {epoch_loss}')
 
-        if epoch == 0:
+        if epoch % 5 == 0:
             save_dict = {
                 'student': student.state_dict(),
                 'teacher': teacher.state_dict(),
@@ -104,7 +104,9 @@ def train_dino(config):
             print('saving checkpoint')
             torch.save(save_dict, config.model.checkpoint_path)
 
-            extract_feature_pipeline(config)
+            train_features, test_features, train_labels, test_labels = extract_feature_pipeline(config)
+            top1 = knn_classifier(train_features, train_labels, test_features, test_labels, 10, 0.07, num_classes=2) #10 NN and 0.07 temp
+            print(f'Top1 accuracy for validation set is {top1} size is {test_labels.shape}')
 
 
         
@@ -126,9 +128,9 @@ def train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr
         # move images to gpu
         images = [image.to(torch.device(config.train.device)) for image in batch]
 
-        print(images[0].shape)
-        print(images[3].shape)
-        print(label.shape)
+        #print(images[0].shape)
+        #print(images[3].shape)
+        #print(label.shape)
 
         # teacher and student forward passes + compute dino loss
         with torch.cuda.amp.autocast(fp16_scaler is not None):
@@ -178,11 +180,11 @@ def train_one_epoch(student, teacher, dino_loss, train_dataloader, optimizer, lr
 
 def extract_feature_pipeline(config):
     
-    transform = pth_transforms.Compose([
-        pth_transforms.Resize(256, interpolation=3),
-        pth_transforms.CenterCrop(224),
-        pth_transforms.ToTensor(),
-        pth_transforms.Normalize(tuple(config.data.mean), tuple(config.data.std)),
+    transform = transforms.Compose([
+        transforms.Resize(256, interpolation=3),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(tuple(config.data.mean), tuple(config.data.std)),
     ])
     train_dataset = datasets.ImageFolder(root=config.data.train_path, transform=transform)
     val_dataset = datasets.ImageFolder(root=config.data.val_path, transform=transform)
@@ -191,7 +193,7 @@ def extract_feature_pipeline(config):
         batch_size=config.train.batch_size,
         num_workers=config.train.num_workers,
         pin_memory=True,
-        drop_last=False,
+        drop_last=True,
     )
     data_loader_val = torch.utils.data.DataLoader(
         val_dataset,
@@ -216,25 +218,26 @@ def extract_feature_pipeline(config):
     eval_model.eval()
 
     print("Extracting features for train set...")
-    train_features = extract_features(eval_model, data_loader_train, args.use_cuda)
+    train_features, train_labels = extract_features(eval_model, data_loader_train, use_cuda=True)
     print("Extracting features for val set...")
-    test_features = extract_features(eval_model, data_loader_val, args.use_cuda)
+    test_features, test_labels = extract_features(eval_model, data_loader_val, use_cuda=True)
 
-    if utils.get_rank() == 0:
-        train_features = nn.functional.normalize(train_features, dim=1, p=2)
-        test_features = nn.functional.normalize(test_features, dim=1, p=2)
+    #if utils.get_rank() == 0:
+    train_features = torch.nn.functional.normalize(train_features, dim=1, p=2)
+    test_features = torch.nn.functional.normalize(test_features, dim=1, p=2)
 
-    train_labels = torch.tensor([s[-1] for s in dataset_train.samples]).long()
-    test_labels = torch.tensor([s[-1] for s in dataset_val.samples]).long()
+    
+    #train_labels = torch.tensor([s[-1] for s in train_dataset.samples]).long()
+    #test_labels = torch.tensor([s[-1] for s in val_dataset.samples]).long()
     # save features and labels
-    if args.dump_features and dist.get_rank() == 0:
-        torch.save(train_features.cpu(), os.path.join(args.dump_features, "trainfeat.pth"))
-        torch.save(test_features.cpu(), os.path.join(args.dump_features, "testfeat.pth"))
-        torch.save(train_labels.cpu(), os.path.join(args.dump_features, "trainlabels.pth"))
-        torch.save(test_labels.cpu(), os.path.join(args.dump_features, "testlabels.pth"))
+    # if args.dump_features and dist.get_rank() == 0:
+    #     torch.save(train_features.cpu(), os.path.join(args.dump_features, "trainfeat.pth"))
+    #     torch.save(test_features.cpu(), os.path.join(args.dump_features, "testfeat.pth"))
+    #     torch.save(train_labels.cpu(), os.path.join(args.dump_features, "trainlabels.pth"))
+    #     torch.save(test_labels.cpu(), os.path.join(args.dump_features, "testlabels.pth"))
     return train_features, test_features, train_labels, test_labels
 
 
 if __name__ == '__main__':
-    config = load_global_config('configs/dino_S1_train_cpu_only.toml')
+    config = load_global_config('configs/dino_S1_train.toml')
     train_dino(config)
