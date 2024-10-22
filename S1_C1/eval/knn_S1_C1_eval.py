@@ -23,7 +23,7 @@ def extract_feature_pipeline(config):
 
     data_loader_train = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=config.train.batch_size,
+        batch_size=config.train.train_eval_batch_size,
         num_workers=config.train.num_workers,
         pin_memory=True,
         drop_last=True,
@@ -62,8 +62,8 @@ def extract_feature_pipeline(config):
     if config.data.c1_val:
 
         transform2 = transforms.Compose([
-            # transforms.Resize(256, interpolation=3),
-            # transforms.CenterCrop(224),
+            transforms.Resize(256, interpolation=3),
+            transforms.CenterCrop(224),
             transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
             transforms.Normalize(tuple(config.data.mean), tuple(config.data.std)),
@@ -94,8 +94,8 @@ if __name__ == '__main__':
     config = load_global_config('../configs/dino_S1_train.toml')
     if config.data.c1_val:
         train_features, train_labels, test_features, test_labels, c1_features, c1_labels = extract_feature_pipeline(config)
-        top1_s1 = knn_classifier(train_features, train_labels, test_features, test_labels, 2, 0.07, num_classes=2)
-        top1_c1 = knn_classifier(train_features, train_labels, c1_features, c1_labels, 10, 0.07, num_classes=2)
+        top1_s1 = knn_classifier(train_features, train_labels, test_features, test_labels, 10, 0.07, num_classes=2)
+        top1_c1 = knn_classifier(train_features, train_labels, c1_features, c1_labels, 20, 0.07, num_classes=2)
         print(f'Top1 accuracy for S1 validation set is {top1_s1}')
         print(f'Top1 accuracy for C1 validation set is {top1_c1}')
     else:

@@ -34,13 +34,20 @@ def train_dino(config):
     
     dataset = datasets.ImageFolder(root=config.data.train_path, transform=transform)
 
-    sample_weights = calculate_sampler_weights(dataset)
-
-    # Create WeightedRandomSampler
-    sampler = WeightedRandomSampler(sample_weights, len(sample_weights))
-
-    train_dataloader = DataLoader(dataset,
+    if config.DINO.oversampling:
+        sample_weights = calculate_sampler_weights(dataset)
+        # Create WeightedRandomSampler
+        sampler = WeightedRandomSampler(sample_weights, len(sample_weights))
+        
+        train_dataloader = DataLoader(dataset,
                               sampler=sampler,
+                              batch_size=config.train.batch_size,
+                              num_workers=config.train.num_workers,
+                              pin_memory=config.train.pin_memory,
+                              drop_last=True)
+    else:
+        train_dataloader = DataLoader(dataset,
+                              shuffle=True,
                               batch_size=config.train.batch_size,
                               num_workers=config.train.num_workers,
                               pin_memory=config.train.pin_memory,
@@ -190,7 +197,7 @@ def extract_feature_pipeline(config):
     val_dataset = datasets.ImageFolder(root=config.data.val_path, transform=transform)
     data_loader_train = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=config.train.batch_size,
+        batch_size=config.train.train_eval_batch_size,
         num_workers=config.train.num_workers,
         pin_memory=True,
         drop_last=True,

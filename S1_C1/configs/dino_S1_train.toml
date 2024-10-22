@@ -17,25 +17,33 @@ patch_size = 16
 out_dim = 16384 # complex and large datasets values like 65k work well
 use_bn_head = false # use batch norm in head
 norm_last_layer = true #  normalize the last layer of the DINO head, typically set this paramater to False with vit_small and True with vit_base
-checkpoint_path = 'model_checkpoints/ViT_small_16_o16384_wtt01_tt03_mt9995.pth'
+checkpoint_path = 'model_checkpoints/ViT_small_16_o16384_wtt01_tt03_mt9995_no_oversampling.pth'
 
 [DINO]
 warmup_teacher_temp = 0.01 # Initial value for the teacher temperature, Try decreasing it if the training loss does not decrease
 teacher_temp = 0.03
-warmup_teacher_temp_epochs = 15 # 30 is default?
+warmup_teacher_temp_epochs = 30 # 30 is default?
 momentum_teacher = 0.9995 # Base EMA parameter for teacher update. The value is increased to 1 during training with cosine schedule. We recommend setting a higher value with small batches: for example use 0.9995 with batch size of 256.""")
+oversampling = false
+
+[linear]
+n_last_blocks = 4
+avgpool_patchtokens = false
+num_labels = 2
+lr = 0.0005
 
 [train]
 device = 'cuda'
-epochs = 501
+epochs = 801 #500 for DINO, 100 for linear
 lr = 1e-3
 min_lr=1e-4
 warmup_epochs = 10
 weight_decay = 0.04
 weight_decay_end = 0.4
-batch_size = 251
-val_batch_size = 32
-c1_val_batch_size = 380
+batch_size = 256 #256 for ViTS16 and linear training runs, 64 for ViTS8 training run
+train_eval_batch_size = 1 #training set batch size for knn eval (maximise sample count)
+val_batch_size = 32 #val batch size for knn eval and linear eval
+c1_val_batch_size = 1
 num_workers = 32
 pin_memory = true
 use_fp16 = true
