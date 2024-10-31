@@ -10,6 +10,7 @@ import torch
 import torchvision
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, transforms
+from torchvision import models as torchvision_models
 
 # local module imports
 from S1_C1.configs.config import load_global_config
@@ -53,9 +54,16 @@ def train_dino(config):
                               pin_memory=config.train.pin_memory,
                               drop_last=True)
     
-    student = vit.__dict__[config.model.model](patch_size=config.model.patch_size, drop_path_rate=0.1)
-    teacher = vit.__dict__[config.model.model](patch_size=config.model.patch_size)
-    embed_dim = student.embed_dim
+    if config.model.model in vit.__dict__.keys():
+        student = vit.__dict__[config.model.model](patch_size=config.model.patch_size, drop_path_rate=0.1)
+        teacher = vit.__dict__[config.model.model](patch_size=config.model.patch_size)
+        embed_dim = student.embed_dim
+    elif config.model.model in torchvision_models.__dict__.keys():
+        student = torchvision_models.__dict__[config.model.model]()
+        teacher = torchvision_models.__dict__[config.model.model]()
+        embed_dim = student.fc.weight.shape[1]
+    else:
+        print('Model not supported')
 
     # multi-crop wrapper handles forward with inputs of different resolutions
     student = utils.MultiCropWrapper(student, DINOHead(embed_dim, config.model.out_dim, use_bn=config.model.use_bn_head, norm_last_layer=config.model.norm_last_layer))
@@ -78,7 +86,13 @@ def train_dino(config):
         ).to(device)
 
     params_groups = utils.get_params_groups(student)
-    optimizer = torch.optim.AdamW(params_groups)  # to use with ViTs
+
+    if config.train.optim == "adamw":
+        optimizer = torch.optim.AdamW(params_groups)  # to use with ViTs
+    elif config.train.optim == "sgd":
+        optimizer = torch.optim.SGD(params_groups, lr=0, momentum=0.9)  # to use with ResNet50, lr is set by scheduler
+    else:
+        print('Optimizer not supported')
 
     lr_schedule = utils.cosine_scheduler(config.train.lr, config.train.min_lr, config.train.epochs, len(train_dataloader), warmup_epochs=config.train.warmup_epochs)
 
@@ -211,7 +225,14 @@ def extract_feature_pipeline(config):
     )
 
     # ============ building network ... ============
-    eval_model = vit.__dict__[config.model.model](patch_size=config.model.patch_size)
+    if config.model.model in vit.__dict__.keys():
+        eval_model = vit.__dict__[config.model.model](patch_size=config.model.patch_size)
+    elif config.model.model in torchvision_models.__dict__.keys():
+        eval_model = torchvision_models.__dict__[config.model.model](num_classes=0)
+        eval_model.fc = torch.nn.Identity()
+    else:
+        print('Model not supported')
+        
     eval_model.to(config.train.device)
     
     state_dict = torch.load(config.model.checkpoint_path, map_location="cpu")

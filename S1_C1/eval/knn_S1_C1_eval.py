@@ -4,6 +4,7 @@ from S1_C1.configs.config import load_global_config
 from dino.knn_evaluation import extract_features, knn_classifier
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+from torchvision import models as torchvision_models
 import dino.vision_transformer as vit
 import torch
 
@@ -35,9 +36,15 @@ def extract_feature_pipeline(config):
         pin_memory=True,
         drop_last=False,
     )
-
     # ============ building network ... ============
-    eval_model = vit.__dict__[config.model.model](patch_size=config.model.patch_size)
+    if config.model.model in vit.__dict__.keys():
+        eval_model = vit.__dict__[config.model.model](patch_size=config.model.patch_size)
+    elif config.model.model in torchvision_models.__dict__.keys():
+        eval_model = torchvision_models.__dict__[config.model.model](num_classes=0)
+        eval_model.fc = torch.nn.Identity()
+    else:
+        print('Model not supported')
+
     eval_model.to(config.train.device)
     
     state_dict = torch.load('../'+config.model.checkpoint_path, map_location="cpu")
@@ -94,8 +101,8 @@ if __name__ == '__main__':
     config = load_global_config('../configs/dino_S1_train.toml')
     if config.data.c1_val:
         train_features, train_labels, test_features, test_labels, c1_features, c1_labels = extract_feature_pipeline(config)
-        top1_s1 = knn_classifier(train_features, train_labels, test_features, test_labels, 10, 0.07, num_classes=2)
-        top1_c1 = knn_classifier(train_features, train_labels, c1_features, c1_labels, 20, 0.07, num_classes=2)
+        top1_s1 = knn_classifier(train_features, train_labels, test_features, test_labels, 3, 0.07, num_classes=2)
+        top1_c1 = knn_classifier(train_features, train_labels, c1_features, c1_labels, 3, 0.07, num_classes=2)
         print(f'Top1 accuracy for S1 validation set is {top1_s1}')
         print(f'Top1 accuracy for C1 validation set is {top1_c1}')
     else:

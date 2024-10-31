@@ -19,7 +19,7 @@ class LinearClassifier(nn.Module):
         # linear layer
         return self.linear(x)
     
-def train(model, linear_classifier, optimizer, loader, epoch, n, avgpool, device):
+def train(model, linear_classifier, optimizer, loader, epoch, n, avgpool, device, arch='vit'):
     linear_classifier.train()
     linear_classifier.to(device)
     model.to(device)
@@ -35,11 +35,16 @@ def train(model, linear_classifier, optimizer, loader, epoch, n, avgpool, device
 
         # forward for ViT
         with torch.no_grad():
-            intermediate_output = model.get_intermediate_layers(inp, n)
-            output = torch.cat([x[:, 0] for x in intermediate_output], dim=-1)
-            if avgpool:
-                output = torch.cat((output.unsqueeze(-1), torch.mean(intermediate_output[-1][:, 1:], dim=1).unsqueeze(-1)), dim=-1)
-                output = output.reshape(output.shape[0], -1)
+            if arch == 'vit':
+                #print(f'training on arch {arch}')
+                intermediate_output = model.get_intermediate_layers(inp, n)
+                output = torch.cat([x[:, 0] for x in intermediate_output], dim=-1)
+                if avgpool:
+                    output = torch.cat((output.unsqueeze(-1), torch.mean(intermediate_output[-1][:, 1:], dim=1).unsqueeze(-1)), dim=-1)
+                    output = output.reshape(output.shape[0], -1)
+            else:
+                #print(f'training on arch {arch}')
+                output = model(inp)
                 
         output = linear_classifier(output)
         # print(output)
@@ -61,7 +66,7 @@ def train(model, linear_classifier, optimizer, loader, epoch, n, avgpool, device
     return running_loss, counts
 
 @torch.no_grad()
-def validate(val_loader, model, linear_classifier, n, avgpool, device):
+def validate(val_loader, model, linear_classifier, n, avgpool, device, arch='vit'):
     linear_classifier.eval()
     linear_classifier.to(device)
     model.to(device)
@@ -77,11 +82,16 @@ def validate(val_loader, model, linear_classifier, n, avgpool, device):
 
         # forward for ViT
         with torch.no_grad():
-            intermediate_output = model.get_intermediate_layers(inp, n)
-            output = torch.cat([x[:, 0] for x in intermediate_output], dim=-1)
-            if avgpool:
-                output = torch.cat((output.unsqueeze(-1), torch.mean(intermediate_output[-1][:, 1:], dim=1).unsqueeze(-1)), dim=-1)
-                output = output.reshape(output.shape[0], -1)
+            if arch == 'vit':
+                #print(f'evaluating on arch {arch}')
+                intermediate_output = model.get_intermediate_layers(inp, n)
+                output = torch.cat([x[:, 0] for x in intermediate_output], dim=-1)
+                if avgpool:
+                    output = torch.cat((output.unsqueeze(-1), torch.mean(intermediate_output[-1][:, 1:], dim=1).unsqueeze(-1)), dim=-1)
+                    output = output.reshape(output.shape[0], -1)
+            else:
+                #print(f'evaluating on arch {arch}')
+                output = model(inp)
 
         output = linear_classifier(output)
 

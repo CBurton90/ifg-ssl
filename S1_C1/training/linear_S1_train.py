@@ -1,13 +1,14 @@
 import sys
 sys.path.append("/home/conradb/git/ifg-ssl")
 from collections import defaultdict, Counter, OrderedDict
-from sklearn.model_selection import train_test_split
+#from sklearn.model_selection import train_test_split
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 # pytorch
 import torch
 from torchvision import datasets, transforms
+from torchvision import models as torchvision_models
 from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 
 # local module imports
@@ -21,10 +22,10 @@ def train_linear(config):
     
     train_transform = transforms.Compose([
         transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(p=0.8),
-        transforms.RandomVerticalFlip(p=0.8),
-        transforms.ElasticTransform(alpha=100.0),
-        utils.GaussianBlur(p=0.8),
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomVerticalFlip(p=0.5),
+        #transforms.ElasticTransform(alpha=100.0),
+        #utils.GaussianBlur(p=0.8),
         transforms.ToTensor(),
         transforms.Normalize(tuple(config.data.mean), tuple(config.data.std)),
         ])
@@ -73,13 +74,21 @@ def train_linear(config):
     
     idx = torch.randint(63, (1,))
     print(idx)
-    plt.imsave(fname='outputs/train_aug_example_'+str(idx.item())+'.png', arr=train_dataset[idx.item()][0].clamp(0,1).numpy().transpose(1,2,0), format='png')
-    plt.imsave(fname='outputs/val_aug_example_'+str(idx.item())+'.png', arr=val_dataset[idx.item()][0].clamp(0,1).numpy().transpose(1,2,0), format='png')
-    plt.imsave(fname='outputs/C1_aug_example_'+str(idx.item())+'.png', arr=c1_dataset[idx.item()][0].clamp(0,1).numpy().transpose(1,2,0), format='png')
+    #plt.imsave(fname='outputs/train_aug_example_'+str(idx.item())+'.png', arr=train_dataset[idx.item()][0].clamp(0,1).numpy().transpose(1,2,0), format='png')
+    #plt.imsave(fname='outputs/val_aug_example_'+str(idx.item())+'.png', arr=val_dataset[idx.item()][0].clamp(0,1).numpy().transpose(1,2,0), format='png')
+    #plt.imsave(fname='outputs/C1_aug_example_'+str(idx.item())+'.png', arr=c1_dataset[idx.item()][0].clamp(0,1).numpy().transpose(1,2,0), format='png')
 
-    
-    model = vit.__dict__[config.model.model](patch_size=config.model.patch_size, num_classes=0)
-    embed_dim = model.embed_dim * (config.linear.n_last_blocks + int(config.linear.avgpool_patchtokens))
+    if config.model.model in vit.__dict__.keys():
+        arch = 'vit'
+        model = vit.__dict__[config.model.model](patch_size=config.model.patch_size, num_classes=0)
+        embed_dim = model.embed_dim * (config.linear.n_last_blocks + int(config.linear.avgpool_patchtokens))
+    elif config.model.model in torchvision_models.__dict__.keys():
+        arch = 'resnet50'
+        model = torchvision_models.__dict__[config.model.model]()
+        embed_dim = model.fc.weight.shape[1]
+        model.fc = torch.nn.Identity()
+    else:
+        print('Model not available')
 
     state_dict = torch.load(config.model.checkpoint_path, map_location="cpu")
     state_dict = state_dict['teacher']
@@ -95,15 +104,15 @@ def train_linear(config):
     optimizer = torch.optim.SGD(linear_classifier.parameters(),
                             config.linear.lr,
                             momentum=0.9,
-                            weight_decay=0.001, # we do not apply weight decay
+                            weight_decay=0, # we do not apply weight decay 
                             )
     
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, config.train.epochs, eta_min=0)
 
     for epoch in range(0, config.train.epochs):
-        total_loss, t_counts = train(model, linear_classifier, optimizer, train_dataloader, epoch, config.linear.n_last_blocks, config.linear.avgpool_patchtokens, config.train.device)
-        val_acc, val_loss, v_counts = validate(val_dataloader, model, linear_classifier, config.linear.n_last_blocks, config.linear.avgpool_patchtokens, config.train.device)
-        c1_acc, c1_loss, c1_counts = validate(c1_dataloader, model, linear_classifier, config.linear.n_last_blocks, config.linear.avgpool_patchtokens, config.train.device)
+        total_loss, t_counts = train(model, linear_classifier, optimizer, train_dataloader, epoch, config.linear.n_last_blocks, config.linear.avgpool_patchtokens, config.train.device, arch=arch)
+        val_acc, val_loss, v_counts = validate(val_dataloader, model, linear_classifier, config.linear.n_last_blocks, config.linear.avgpool_patchtokens, config.train.device, arch=arch)
+        c1_acc, c1_loss, c1_counts = validate(c1_dataloader, model, linear_classifier, config.linear.n_last_blocks, config.linear.avgpool_patchtokens, config.train.device, arch=arch)
         scheduler.step()
 
         epoch_loss = total_loss / t_counts
