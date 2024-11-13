@@ -1,0 +1,3 @@
+Cuda available = True
+Random seed set as 42
+Munch({'data': Munch({}), 'model': Munch({}), 'train': Munch({'device': 'cuda'})})

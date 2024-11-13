@@ -1,7 +1,6 @@
 *.pyc
 dino/dino_checkpoints/*
 S1_C1/model_checkpoints/*
-hephaestus/*
 BEiT/Dall-E_weights/*.pkl
 !dino/dino_checkpoints/.gitkeep
 !S1_C1/model_checkpoints/.gitkeep
