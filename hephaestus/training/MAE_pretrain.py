@@ -4,12 +4,14 @@ sys.path.append("/home/conradb/git/ifg-ssl")
 import numpy as np
 import os
 import random
+import matplotlib.pyplot as plt
 
 # pytorch imports
 import torch
+import torchvision.transforms as transforms
 
 # DL stack imports
-import wandb
+# import wandb
 import webdataset as wds
 
 # local imports
@@ -36,6 +38,10 @@ def create_model(config: dict) -> torch.nn.Module:
     model = models_mae.__dict__[config.model.model](norm_pix_loss=config.model.norm_pix_loss)
     return model
 
+def pop_class(sample: dict) -> None:
+    sample.pop("cls")
+    return sample
+
 def main(model: torch.nn.Module, config: dict) -> None:
     # Set random seed and device
     print(f'Cuda available = {torch.cuda.is_available()}')
@@ -61,13 +67,38 @@ def main(model: torch.nn.Module, config: dict) -> None:
     # )
     # wandb.watch(model)
 
+    base_transform = transforms.Compose([
+        transforms.Resize(config.data.input_size),
+        transforms.RandomCrop(config.data.input_size),
+        transforms.Grayscale(num_output_channels=3)
+    ])
+
     if config.train.use_wds:
         print('Using WebDataset (sequential sharded I/O)')
+        train_dataset = wds.DataPipeline(
+            wds.SimpleShardList(os.path.join(config.data.train_path, "hephaestus-{000000..000002}.tar")),
+            wds.tarfile_to_samples(),
+            wds.shuffle(1000),
+            wds.map(pop_class),
+            wds.decode("torch"),
+            wds.to_tuple("ifg.png", "cc.png"),
+            wds.map_tuple(base_transform, base_transform),
+            wds.batched(config.train.batch_size),
+        )
+        # train_dataset = wds.WebDataset(config.data.train_path).shuffle(1000)
     else:
         print('Using PyTorch Dataset/Dataloader')
+
+    batch = next(iter(train_dataset))
+
+    idx = torch.randint(9, (1,))
+    print(idx)
+    plt.imsave('tmp/ifg_'+str(idx)+'.png', batch[0][idx.item()].numpy().transpose(1,2,0))
+    plt.imsave('tmp/cc_'+str(idx)+'.png', batch[1][idx.item()].numpy().transpose(1,2,0))
         
 
 
 if __name__ == '__main__':
     config = load_global_config('configs/MAE_pretraining_hephaestus.toml')
-    main(config)
+    model = create_model(config)
+    main(model, config)

@@ -1,22 +1,22 @@
 [data]
-# input_size = 224
+input_size = 224
 # # mean = [0.5118, 0.5118, 0.5118] #S1 mean greyscale
 # # std = [0.2717, 0.2717, 0.2717] #S1 std greyscale
 # mean = [0.4156, 0.4156, 0.4156] # Synthetic InSAR
 # std = [0.4223, 0.4223, 0.4223] # Synthetic InSAR
-# # train_path = '/scratch/SDF25/DeepCube_UC4a/S1/Train/' # enter your path for the S1 train set
+train_path = '/scratch/SDF25/Hephaestus_WDS/' # path for data in web dataset format
 # train_path = '/scratch/SDF25/PrototypeInSAR/synth/' # U:\scratch\SDF25\PrototypeInSAR\synth
 # # output_dir = '/home/conradb/git/ifg-ssl/S1_C1/outputs/'
 
 [model]
-# model = 'mae_vit_base_patch16'
+model = 'mae_vit_base_patch16'
 # mask_ratio = 0.65
-# norm_pix_loss= false
+norm_pix_loss= false
 # checkpoint_path = 'model_checkpoints/SynInSAR_MAE_VitB16_224_no_oversampling.pth'
 
 [train]
 device = 'cuda'
-# batch_size = 256 # consider changing to 256
+batch_size = 10 # consider changing to 256
 lr = 1.5e-4 # consider changing to 1.5e-4
 # min_lr = 0
 # weight_decay = 0.05
@@ -24,6 +24,6 @@ epochs = 1001
 # warmup_epochs = 50
 # num_workers = 32
 # pin_memory = true
-use_wds = false
+use_wds = true
 
 [logging]
