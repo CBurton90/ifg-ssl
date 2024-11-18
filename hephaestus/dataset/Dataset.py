@@ -1,29 +1,55 @@
+import os
+import json
+import numpy as np
+import random
+from tqdm import tqdm
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES=True
+
 import torch
 
-class HephaestusCompleteDataset(torch.utils.Dataset):
-    """
-    Hephaestus Dataset
-    @InProceedings{Bountos_2022_CVPR,
-    author    = {Bountos, Nikolaos Ioannis and Papoutsis, Ioannis and Michail, Dimitrios and Karavias, Andreas and Elias, Panagiotis and Parcharidis, Isaak},
-    title     = {Hephaestus: A Large Scale Multitask Dataset Towards InSAR Understanding},
-    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops},
-    month     = {June},
-    year      = {2022},
-    pages     = {1453-1462}
-    """
+# class HephaestusCompleteDataset(torch.utils.Dataset):
+#     """
+#     Hephaestus Dataset
+#     @InProceedings{Bountos_2022_CVPR,
+#     author    = {Bountos, Nikolaos Ioannis and Papoutsis, Ioannis and Michail, Dimitrios and Karavias, Andreas and Elias, Panagiotis and Parcharidis, Isaak},
+#     title     = {Hephaestus: A Large Scale Multitask Dataset Towards InSAR Understanding},
+#     booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops},
+#     month     = {June},
+#     year      = {2022},
+#     pages     = {1453-1462}
+#     """
 
-    def __initi__(self, config, transform=None):
+#     def __init__(self, config, transform=None):
+
+def get_insar_path(annotation_path, root_path="/scratch/SDF25/LiCSAR-web-tools/"):
+    reader = open(annotation_path)
+    annotation = json.load(reader)
+    frameID = annotation["frameID"]
+    primaryDate = annotation["primary_date"]
+    secondaryDate = annotation["secondary_date"]
+    primary_secondary = primaryDate + "_" + secondaryDate
+    img_path = (
+        root_path
+        + frameID
+        + "/interferograms/"
+        + primary_secondary
+        + "/"
+        + primary_secondary
+        + ".geo.diff.png"
+    )
+    return img_path
 
 
-class Dataset(torch.utils.data.Dataset):
-    def __init__(self, config):
-        self.data_path = config["data_path"]
-        self.augmentations = augmentations.get_augmentations(config)
+class HephaestusCompleteDataset(torch.utils.data.Dataset):
+    def __init__(self, config, transform=None) -> None:
+        self.data_path = config.data.train_path
+        self.transform = transform
         self.interferograms = []
-        self.channels = config["num_channels"]
-        frames = os.listdir(self.data_path)
-        for frame in tqdm(frames):
-            frame_path = self.data_path + "/" + frame + "/interferograms/"
+        self.channels = 3
+        frames = os.listdir(config.data.train_path)
+        for frame in tqdm(frames, total=len(frames)):
+            frame_path = config.data.train_path + frame + "/interferograms/"
             caption = os.listdir(frame_path)
             for cap in caption:
                 caption_path = frame_path + cap + "/" + cap + ".geo.diff.png"
@@ -31,44 +57,129 @@ class Dataset(torch.utils.data.Dataset):
                 if os.path.exists(caption_path):
                     image_dict = {"path": caption_path, "frame": frame}
                     self.interferograms.append(image_dict)
+                else:
+                    continue
 
         self.num_examples = len(self.interferograms)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.num_examples
 
-    def prepare_insar(self, insar):
-        insar = torch.from_numpy(insar).float().permute(2, 0, 1)
-        insar /= 255
+    # def prepare_insar(self, insar):
+    #     insar = torch.from_numpy(insar).float().permute(2, 0, 1)
+    #     insar /= 255
+    #     return insar
+
+    # def read_insar(self, path):
+    #     insar = cv.imread(path, 0)
+    #     if insar is None:
+    #         print("None")
+    #         return insar
+
+    #     insar = np.expand_dims(insar, axis=2).repeat(self.channels, axis=2)
+    #     transform = self.augmentations(image=insar)
+    #     insar_1 = transform["image"]
+    #     transform_2 = self.augmentations(image=insar)
+    #     insar_2 = transform_2["image"]
+
+    #     insar_1 = self.prepare_insar(insar_1)
+    #     insar_2 = self.prepare_insar(insar_2)
+    #     return (insar_1, insar_2)
+
+    def load_image(self, idx: int) -> ImageFile.Image:
+        sample = self.interferograms[idx]
+        path = sample["path"]
+        return ImageFile.Image.open(path)
+
+    def __getitem__(self, idx) -> torch.Tensor:
+
+        try:
+            insar = self.load_image(idx)
+            
+            if self.transform:
+                insar = self.transform(insar)
+            else:
+                insar = insar
+        except OSError as e:
+            print(f'Failed on idx {idx}') 
+
         return insar
 
-    def read_insar(self, path):
-        insar = cv.imread(path, 0)
-        if insar is None:
-            print("None")
-            return insar
+class FullFrameDataset(torch.utils.data.Dataset):
+    '''
+        Dataloader returning the full InSAR frame.
+        Returns InSAR + Coherence , labels.
+    '''
+    def __init__(self, config, mode="train", transform=None):
+        self.data_path = config.data.train_path
+        self.config = config
+        self.mode = mode
+        self.transform = transform
+        self.interferograms = []
+        self.channels = 3
+        self.frame_dict = {}
+        self.positives = []
+        self.negatives = []
+        annotation_path = config.data.annotation_path
+        annotations_list = os.listdir(annotation_path)
+        frames = os.listdir(config.data.train_path)
+        unique_frames = np.unique(frames)
+        test_frames = config.data.test_frames
 
-        insar = np.expand_dims(insar, axis=2).repeat(self.channels, axis=2)
-        transform = self.augmentations(image=insar)
-        insar_1 = transform["image"]
-        transform_2 = self.augmentations(image=insar)
-        insar_2 = transform_2["image"]
+        for idx, frame in enumerate(unique_frames):
+            self.frame_dict[frame] = idx
+        
+        for idx, annotation_file in tqdm(enumerate(annotations_list)):
+            annotation = json.load(open(annotation_path + annotation_file, "r"))
 
-        insar_1 = self.prepare_insar(insar_1)
-        insar_2 = self.prepare_insar(insar_2)
-        return (insar_1, insar_2)
+            if annotation["frameID"] in test_frames and (mode == "train" or mode == "val"):
+                continue
+            
+            if annotation["frameID"] not in test_frames and mode == "test":
+                continue
 
-    def __getitem__(self, index):
-        insar = None
-        while insar is None:
-            sample = self.interferograms[index]
-            path = sample["path"]
+            if "Non_Deformation" in annotation["label"]:
+                label = 0
+            else:
+                label = 1
 
-            insar = self.read_insar(path)
-            if insar is None:
-                if index < self.num_examples - 1:
-                    index += 1
-                else:
-                    index = 0
+            sample_insar_path = get_insar_path(annotation_path=annotation_path + annotation_file, root_path=config.data.train_path)
+            sample_cc_path = sample_insar_path[:-8] + 'cc.png'
 
-        return insar
+            if not os.path.isfile(sample_cc_path) or not os.path.isfile(sample_insar_path):
+                continue
+
+            sample_dict = {"frameID": annotation["frameID"], "insar_path": sample_insar_path, "label": annotation}
+            self.interferograms.append(sample_dict)
+
+            if label == 0:
+                self.negatives.append(sample_dict)
+            else:
+                self.positives.append(sample_dict)
+
+        random.Random(999).shuffle(self.negatives)
+        random.Random(999).shuffle(self.positives)
+
+        if self.mode == "train":
+            self.positives = self.positives[:int(0.9*len(self.positives))]
+            self.negatives = self.negatives[:int(0.9*len(self.negatives))]
+            self.interferograms = self.positives.copy()
+            self.interferograms.extend(self.negatives.copy())
+            self.num_examples = len(self.interferograms)
+
+        elif self.mode=='val':
+            self.positives = self.positives[int(0.9*len(self.positives)):]
+            self.negatives = self.negatives[int(0.9*len(self.negatives)):]
+            self.interferograms = self.positives.copy()
+            self.interferograms.extend(self.negatives.copy())
+            self.num_examples = len(self.interferograms)
+
+        else:
+            self.num_examples = len(self.interferograms)
+
+        print('Mode: ',self.mode,' Number of examples: ',self.num_examples)
+        print('Number of positives: ',len(self.positives))
+        print('Number of negatives: ',len(self.negatives))
+
+    def __len__(self):
+        return self.num_examples

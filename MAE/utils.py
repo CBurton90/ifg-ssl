@@ -110,3 +110,19 @@ class RandomResizedCrop(transforms.RandomResizedCrop):
         j = torch.randint(0, width - w + 1, size=(1,)).item()
 
         return i, j, h, w
+
+def load_model(config, model_without_ddp, optimizer, loss_scaler):
+    if config.model.pre_trained_ckpt:
+        if config.model.pre_trained_ckpt.startswith('https'):
+            checkpoint = torch.hub.load_state_dict_from_url(
+                config.model.pre_trained_ckpt, map_location='cpu', check_hash=True)
+        else:
+            checkpoint = torch.load(config.model.pre_trained_ckpt, map_location='cpu')
+        model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
+        print("Resume checkpoint %s" % config.model.pre_trained_ckpt)
+        if 'optimizer' in checkpoint and 'epoch' in checkpoint and not (hasattr(args, 'eval') and args.eval):
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            args.start_epoch = checkpoint['epoch'] + 1
+            if 'scaler' in checkpoint:
+                loss_scaler.load_state_dict(checkpoint['scaler'])
+            print("With optim & sched!")

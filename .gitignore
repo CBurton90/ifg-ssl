@@ -2,6 +2,8 @@
 dino/dino_checkpoints/*
 S1_C1/model_checkpoints/*
 BEiT/Dall-E_weights/*.pkl
+hephaestus/checkpoints/*.pth
+hephaestus/tmp/*.png
 !dino/dino_checkpoints/.gitkeep
 !S1_C1/model_checkpoints/.gitkeep
-!hephaestus/.gitkeep
+!hephaestus/checkpoints/.gitkeep

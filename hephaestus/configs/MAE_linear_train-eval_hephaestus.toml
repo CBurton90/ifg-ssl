@@ -1,0 +1,14 @@
+[data]
+input_size = 224
+ifg_mean = [0.5472, 0.5472, 0.5472] # interferogram mean
+ifg_std = [0.4142, 0.4142, 0.4142] # interferogram std
+cc_mean = [0.7416, 0.7416, 0.7416] # coherence mean
+cc_std = [0.2995, 0.2995, 0.2995] # coherence std
+train_path = '/scratch/SDF25/LiCSAR-web-tools/' # path for data
+annotation_path = '/scratch/SDF25/annotations_hephaestus/annotations/'
+test_frames = ["124D_04854_171313", "022D_04826_121209", "087D_07004_060904","174A_09133_131313","021D_09150_131313","109D_05390_141615", "162A_06192_060402", "076D_09725_121107","115D_04999_131313","152D_08915_131313", "164A_13146_131313","151D_SM_REUN_S4","144A_SM_REUN_S6"] # Volcanoes in Campi Flegrei (Italy), Kilauea (Hawaii), Mauna Loa (Hawaii), Puu Ooo (Hawaii), Nyiragongo (Congo), Santorini (Greece), Caldera de los Marteles (Spain/Africa), Merapi (Indonesia), Korosi (Kenya), Silali (Kenya), Cerro Tronador (Chile), Osorno (Chile), Puyehue (Chile), La Soufriere (Carribean)
+# train_path = '/scratch/SDF25/PrototypeInSAR/synth/' # U:\scratch\SDF25\PrototypeInSAR\synth
+# # output_dir = '/home/conradb/git/ifg-ssl/S1_C1/outputs/'
+
+[train]
+device = 'cuda'
