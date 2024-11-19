@@ -89,7 +89,7 @@ class HephaestusCompleteDataset(torch.utils.data.Dataset):
     def load_image(self, idx: int) -> ImageFile.Image:
         sample = self.interferograms[idx]
         path = sample["path"]
-        return ImageFile.Image.open(path)
+        return ImageFile.Image.open(path).convert('RGB')
 
     def __getitem__(self, idx) -> torch.Tensor:
 

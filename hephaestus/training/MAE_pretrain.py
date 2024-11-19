@@ -112,13 +112,14 @@ def main(model: torch.nn.Module, config: dict) -> None:
 
         transform = transforms.Compose([
             # transforms.Resize(config.data.input_size),
-            transforms.RandomResizedCrop(config.data.input_size, scale=(0.2, 1.0), interpolation=3), # Bountos et al uses RandomCrop
+            transforms.RandomResizedCrop(config.data.input_size, scale=(0.15, 1.0), interpolation=3), # Bountos et al uses RandomCrop
             # transforms.RandomCrop(config.data.input_size),
             transforms.Grayscale(num_output_channels=3), # Grayscale transform, TODO check if MAE will function with single channel images
             transforms.RandomHorizontalFlip(),
-            transforms.ToTensor()
-            # transforms.Normalize(mean=config.data.ifg_mean, std=config.data.ifg_std)
-    ])
+            transforms.RandomVerticalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=config.data.ifg_mean, std=config.data.ifg_std)
+            ])
         train_dataset = HephaestusCompleteDataset(config, transform=transform)
         train_loader = torch.utils.data.DataLoader(
             train_dataset,

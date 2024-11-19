@@ -1,7 +1,9 @@
 [data]
 input_size = 224
-ifg_mean = [0.5472, 0.5472, 0.5472] # interferogram mean
-ifg_std = [0.4142, 0.4142, 0.4142] # interferogram std
+#ifg_mean = [0.5472, 0.5472, 0.5472] # interferogram mean
+#ifg_std = [0.4142, 0.4142, 0.4142] # interferogram std
+ifg_mean = [0.6077, 0.6077, 0.6077]
+ifg_std = [0.2037, 0.2037, 0.2037]
 cc_mean = [0.7416, 0.7416, 0.7416] # coherence mean
 cc_std = [0.2995, 0.2995, 0.2995] # coherence std
 #train_path = '/scratch/SDF25/Hephaestus_WDS/' # path for data in web dataset format
@@ -10,10 +12,10 @@ train_path = '/scratch/SDF25/LiCSAR-web-tools/'
 
 [model]
 model = 'mae_vit_base_patch16'
-mask_ratio = 0.75
+mask_ratio = 0.60
 norm_pix_loss= false
 pre_trained_ckpt = "/home/conradb/git/ifg-ssl/hephaestus/checkpoints/mae_pretrain_vit_base.pth"
-checkpoint_save_path = '/home/conradb/git/ifg-ssl/hephaestus/checkpoints/Hephaestus_MAE_VitB16_224_no_os_no_norm_2000e_75msk_1-5e4lr.pth'
+checkpoint_save_path = '/home/conradb/git/ifg-ssl/hephaestus/checkpoints/Hephaestus_MAE_VitB16_224_no_os_norm_1000e_60msk_1-5e4lr.pth'
 
 [train]
 device = 'cuda'
@@ -21,8 +23,8 @@ batch_size = 256 # consider changing to 256
 blr = 1.5e-4 # consider changing to 1.5e-4
 min_lr = 0
 weight_decay = 0.05
-epochs = 2001
-warmup_epochs = 100
+epochs = 1001
+warmup_epochs = 50
 num_workers = 32
 # pin_memory = true
 use_wds = false
