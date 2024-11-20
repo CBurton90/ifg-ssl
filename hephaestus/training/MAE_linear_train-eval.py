@@ -82,16 +82,16 @@ def main(config: dict) -> None:
         shuffle=False,
         num_workers=config.train.num_workers,
         pin_memory=True,
-        drop_last=False,
+        drop_last=True,
         )
 
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=config.train.batch_size,
         shuffle=False,
-        num_workers=configs.train.num_workers,
+        num_workers=config.train.num_workers,
         pin_memory=True,
-        drop_last=False,
+        drop_last=True,
         )
 
     model = models_vit.__dict__[config.model.model](num_classes=config.data.num_classes, global_pool=config.model.global_pool)
@@ -135,7 +135,7 @@ def main(config: dict) -> None:
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     print("Model = %s" % str(model))
-    print('number of params (M): %.2f' % (n_parameters / 1.e6))
+    print('number of params (M): %.2f' % (n_parameters))
 
     config.train.lr = config.train.blr * config.train.batch_size / 256
     print("base lr: %.2e" % (config.train.lr * 256 / config.train.batch_size))
@@ -175,5 +175,5 @@ def main(config: dict) -> None:
 
 
 if __name__ == '__main__':
-    config = load_global_config('configs/MAE_linear_train-eval_hephaestus.toml')
+    config = load_global_config('../configs/MAE_linear_train-eval_hephaestus.toml')
     main(config)

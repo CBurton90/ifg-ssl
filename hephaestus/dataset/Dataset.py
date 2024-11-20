@@ -3,6 +3,7 @@ import json
 import numpy as np
 import random
 from tqdm import tqdm
+from PIL import Image
 from PIL import ImageFile
 from typing import Tuple
 ImageFile.LOAD_TRUNCATED_IMAGES=True
@@ -87,7 +88,7 @@ class HephaestusCompleteDataset(torch.utils.data.Dataset):
     #     insar_2 = self.prepare_insar(insar_2)
     #     return (insar_1, insar_2)
 
-    def load_image(self, idx: int) -> ImageFile.Image:
+    def load_image(self, idx: int) -> Image.Image:
         sample = self.interferograms[idx]
         path = sample["path"]
         return ImageFile.Image.open(path).convert('RGB')
@@ -186,7 +187,7 @@ class FullFrameDataset(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return self.num_examples
 
-    def __getitem__(self, idx) -> Tuple[ImageFile.Image, torch.Tensor]:
+    def __getitem__(self, idx) -> Tuple[Image.Image, torch.Tensor]:
         insar = None
         if self.oversampling and self.mode == "train":
             while insar is None:
@@ -200,10 +201,20 @@ class FullFrameDataset(torch.utils.data.Dataset):
 
                 insar = ImageFile.Image.open(sample["insar_path"]).convert('RGB')
 
+                if self.transform:
+                    insar = self.transform(insar)
+                else:
+                    insar = insar
+
         else:
             while insar is None:
                 sample = self.interferograms[idx]
                 insar = ImageFile.Image.open(sample["insar_path"]).convert('RGB')
+
+                if self.transform:
+                    insar = self.transform(insar)
+                else:
+                    insar = insar
 
                 if insar is None:
                     if idx < self.num_examples -1:
@@ -213,8 +224,8 @@ class FullFrameDataset(torch.utils.data.Dataset):
 
         annotation = sample["label"]
         if "Non_Deformation" in annotation["label"]:
-            label = torch.tensor(0).float()
+            label = torch.tensor(0).long()
         else:
-            label = torch.tensor(1).float()
+            label = torch.tensor(1).long()
 
         return insar, label
