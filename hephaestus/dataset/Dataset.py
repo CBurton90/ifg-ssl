@@ -4,6 +4,7 @@ import numpy as np
 import random
 from tqdm import tqdm
 from PIL import ImageFile
+from typing import Tuple
 ImageFile.LOAD_TRUNCATED_IMAGES=True
 
 import torch
@@ -112,6 +113,7 @@ class FullFrameDataset(torch.utils.data.Dataset):
     '''
     def __init__(self, config, mode="train", transform=None):
         self.data_path = config.data.train_path
+        self.oversampling = config.train.oversampling
         self.config = config
         self.mode = mode
         self.transform = transform
@@ -181,5 +183,38 @@ class FullFrameDataset(torch.utils.data.Dataset):
         print('Number of positives: ',len(self.positives))
         print('Number of negatives: ',len(self.negatives))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.num_examples
+
+    def __getitem__(self, idx) -> Tuple[ImageFile.Image, torch.Tensor]:
+        insar = None
+        if self.oversampling and self.mode == "train":
+            while insar is None:
+                choice = random.randint(0,1)
+                if choice == 0:
+                    choice_neg = random.randint(0, len(self.negatives) -1)
+                    sample = self.negatives[choice_neg]
+                else:
+                    choice_pos = random.randint(0, len(self.positives) -1)
+                    sample = self.positives[choice_pos]
+
+                insar = ImageFile.Image.open(sample["insar_path"]).convert('RGB')
+
+        else:
+            while insar is None:
+                sample = self.interferograms[idx]
+                insar = ImageFile.Image.open(sample["insar_path"]).convert('RGB')
+
+                if insar is None:
+                    if idx < self.num_examples -1:
+                        idx += 1
+                    else:
+                        idx = 0
+
+        annotation = sample["label"]
+        if "Non_Deformation" in annotation["label"]:
+            label = torch.tensor(0).float()
+        else:
+            label = torch.tensor(1).float()
+
+        return insar, label

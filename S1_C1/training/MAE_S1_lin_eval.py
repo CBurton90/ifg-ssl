@@ -122,17 +122,16 @@ def main(config):
     device = torch.device(config.train.device)
     model.to(device)
 
-    model_without_ddp = model
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    print("Model = %s" % str(model_without_ddp))
+    print("Model = %s" % str(model))
     print('number of params (M): %.2f' % (n_parameters / 1.e6))
 
     config.train.lr = config.train.blr * config.train.batch_size / 256
     print("base lr: %.2e" % (config.train.lr * 256 / config.train.batch_size))
     print("actual lr: %.2e" % config.train.lr)
 
-    optimizer = LARS(model_without_ddp.head.parameters(), lr=config.train.lr, weight_decay=config.train.weight_decay)
+    optimizer = LARS(model.head.parameters(), lr=config.train.lr, weight_decay=config.train.weight_decay)
     print(optimizer)
     loss_scaler = NativeScaler()
 

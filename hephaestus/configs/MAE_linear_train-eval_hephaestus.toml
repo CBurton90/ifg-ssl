@@ -1,14 +1,27 @@
 [data]
 input_size = 224
-ifg_mean = [0.5472, 0.5472, 0.5472] # interferogram mean
-ifg_std = [0.4142, 0.4142, 0.4142] # interferogram std
-cc_mean = [0.7416, 0.7416, 0.7416] # coherence mean
-cc_std = [0.2995, 0.2995, 0.2995] # coherence std
+ifg_mean = [0.6077, 0.6077, 0.6077]
+ifg_std = [0.2037, 0.2037, 0.2037]
 train_path = '/scratch/SDF25/LiCSAR-web-tools/' # path for data
 annotation_path = '/scratch/SDF25/annotations_hephaestus/annotations/'
 test_frames = ["124D_04854_171313", "022D_04826_121209", "087D_07004_060904","174A_09133_131313","021D_09150_131313","109D_05390_141615", "162A_06192_060402", "076D_09725_121107","115D_04999_131313","152D_08915_131313", "164A_13146_131313","151D_SM_REUN_S4","144A_SM_REUN_S6"] # Volcanoes in Campi Flegrei (Italy), Kilauea (Hawaii), Mauna Loa (Hawaii), Puu Ooo (Hawaii), Nyiragongo (Congo), Santorini (Greece), Caldera de los Marteles (Spain/Africa), Merapi (Indonesia), Korosi (Kenya), Silali (Kenya), Cerro Tronador (Chile), Osorno (Chile), Puyehue (Chile), La Soufriere (Carribean)
+num_classes = 2
 # train_path = '/scratch/SDF25/PrototypeInSAR/synth/' # U:\scratch\SDF25\PrototypeInSAR\synth
 # # output_dir = '/home/conradb/git/ifg-ssl/S1_C1/outputs/'
 
+[model]
+model = 'vit_base_patch16'
+global_pool = false
+mask_ratio = 0.60
+checkpoint_path = 'checkpoints/Hephaestus_MAE_VitB16_224_no_os_norm_1000e_60msk_1-5e4lr.pth'
+
 [train]
-device = 'cuda'
+device = 'cpu'
+oversampling = true
+batch_size = 256
+blr = 1e-2 # consider changing to 1.5e-4
+min_lr = 0
+weight_decay = 0
+epochs = 10
+warmup_epochs = 10
+num_workers = 32
