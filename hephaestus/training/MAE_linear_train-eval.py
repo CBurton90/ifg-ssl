@@ -4,6 +4,7 @@ sys.path.append("/home/conradb/git/ifg-ssl")
 import numpy as np
 import os
 import random
+import matplotlib.pyplot as plt
 
 # pytorch imports
 import torch
@@ -78,20 +79,20 @@ def main(config: dict) -> None:
 
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
-        batch_size=config.train.batch_size,
+        batch_size=config.train.val_batch_size,
         shuffle=False,
         num_workers=config.train.num_workers,
         pin_memory=True,
-        drop_last=True,
+        drop_last=False,
         )
 
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
-        batch_size=config.train.batch_size,
+        batch_size=config.train.test_batch_size,
         shuffle=False,
         num_workers=config.train.num_workers,
         pin_memory=True,
-        drop_last=True,
+        drop_last=False,
         )
 
     model = models_vit.__dict__[config.model.model](num_classes=config.data.num_classes, global_pool=config.model.global_pool)
@@ -149,7 +150,12 @@ def main(config: dict) -> None:
 
     print(f"Start training for {config.train.epochs} epochs")
 
-    max_accuracy = 0.0
+    train_epoch_loss = []
+    val_epoch_loss = []
+    test_epoch_loss = []
+    val_epoch_acc = []
+    test_epoch_acc = []
+
     for epoch in range(0, config.train.epochs):
         
         train_loss = train_one_epoch(
@@ -173,7 +179,30 @@ def main(config: dict) -> None:
         print(f'validation accuracy is {acc}')
         print(f'test accuracy is {test_acc}')
 
+        train_epoch_loss.append(train_loss)
+        val_epoch_loss.append(val_loss)
+        test_epoch_loss.append(test_loss) 
+        val_epoch_acc.append(acc)
+        test_epoch_acc.append(test_acc)
+
+        if epoch % 5 == 0:
+            fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+            fig.suptitle('Hephaestus MAE Linear Probing (Train, Val, Test)')
+            ax1.plot(range(len(train_epoch_loss)), np.array(train_epoch_loss), 'b', label='train')
+            ax1.plot(range(len(val_epoch_loss)), np.array(val_epoch_loss), 'c', label='val')
+            ax1.plot(range(len(test_epoch_loss)), np.array(test_epoch_loss), 'm', label='test')
+            ax1.legend(loc="upper right")
+
+            ax1.set_ylabel('Cross Entropy Loss')
+            ax2.plot(range(len(val_epoch_acc)), np.array(val_epoch_acc), 'c', label='val')
+            ax2.plot(range(len(test_epoch_acc)), np.array(test_epoch_acc), 'm', label='test')
+            ax2.legend(loc="upper right")
+            ax2.set_ylabel('Accuracy')
+            plt.xlabel("Epochs")
+            plt.savefig('tmp/MAE_linear_probing_'+str(config.train.epochs)+'_epochs.png', dpi=300, format='png')
+
+
 
 if __name__ == '__main__':
-    config = load_global_config('../configs/MAE_linear_train-eval_hephaestus.toml')
+    config = load_global_config('configs/MAE_linear_train-eval_hephaestus.toml')
     main(config)

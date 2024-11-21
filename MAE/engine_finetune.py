@@ -121,6 +121,8 @@ def evaluate(data_loader, model, device):
     running_loss = 0
     running_acc = 0
     counts = 0
+    probs = []
+    labels =  []
 
     # for batch in metric_logger.log_every(data_loader, 10, header):
     for it, batch in tqdm(enumerate(data_loader), total=len(data_loader)):
@@ -134,8 +136,11 @@ def evaluate(data_loader, model, device):
             output = model(images)
             loss = criterion(output, target)
 
-        running_loss += loss
+        running_loss += loss.item()
         counts += 1
+        sftmx = torch.nn.Softmax()(output)
+        probs.append(sftmx)
+        labels.append(target)
 
         acc1, = accuracy(output, target, topk=(1,))
 
@@ -151,4 +156,4 @@ def evaluate(data_loader, model, device):
     #       .format(top1=metric_logger.acc1, top5=metric_logger.acc5, losses=metric_logger.loss))
 
     # return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
-    return running_acc, running_loss, counts
+    return running_acc, running_loss, counts, torch.stack(probs).reshape(-1,2)[:,1], torch.stack(labels).reshape(-1)
