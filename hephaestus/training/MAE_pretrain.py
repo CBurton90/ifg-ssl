@@ -112,8 +112,8 @@ def main(model: torch.nn.Module, config: dict) -> None:
 
         transform = transforms.Compose([
             # transforms.Resize(config.data.input_size),
-            transforms.RandomResizedCrop(config.data.input_size, scale=(0.15, 1.0), interpolation=3), # Bountos et al uses RandomCrop
-            # transforms.RandomCrop(config.data.input_size),
+            # transforms.RandomResizedCrop(config.data.input_size, scale=(0.15, 1.0), interpolation=3), # Bountos et al uses RandomCrop
+            transforms.RandomCrop(config.data.input_size),
             transforms.Grayscale(num_output_channels=3), # Grayscale transform, TODO check if MAE will function with single channel images
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
@@ -131,6 +131,7 @@ def main(model: torch.nn.Module, config: dict) -> None:
         )
         batch = next(iter(train_dataset))
         plt.imsave('tmp/ifg_first_samp.png', batch.clamp(0,1).numpy().transpose(1,2,0))
+        print('printing batch')
         print(batch)
         print(torch.min(batch), torch.max(batch))
 

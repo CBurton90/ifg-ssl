@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from timm.models.layers import trunc_normal_
+from timm.layers import trunc_normal_
 
 from utils.config import load_global_config
-from hephaestus.dataset.Dataset import FullFrameDataset
+from hephaestus.dataset.Dataset import FullFrameDataset, SupervisedDataset, CustomImageFolderFT, DatasetFromSubset
 import MAE.models_vit as models_vit
 from MAE.pos_embed import interpolate_pos_embed
 from MAE.utils import LARS, NativeScalerWithGradNormCount as NativeScaler, RandomResizedCrop
@@ -39,9 +39,9 @@ def main(config: dict) -> None:
     device = torch.device(config.train.device)
 
     train_transform = transforms.Compose([
-        transforms.Resize(256, interpolation=3),
+        # transforms.Resize(256, interpolation=3),
         transforms.CenterCrop(224),
-        transforms.Grayscale(num_output_channels=3), # Grayscale transform, TODO check if MAE will function with single channel images
+        # transforms.Grayscale(num_output_channels=3), # Grayscale transform, TODO check if MAE will function with single channel images
         transforms.RandomHorizontalFlip(),
         transforms.RandomVerticalFlip(),
         transforms.ToTensor(),
@@ -49,27 +49,38 @@ def main(config: dict) -> None:
         ])
 
     val_transform = transforms.Compose([
-        transforms.Resize(256, interpolation=3),
+        # transforms.Resize(256, interpolation=3),
         transforms.CenterCrop(224),
-        transforms.Grayscale(num_output_channels=3), # Grayscale transform, TODO check if MAE will function with single channel images
+        # transforms.Grayscale(num_output_channels=3), # Grayscale transform, TODO check if MAE will function with single channel images
         transforms.ToTensor(),
         transforms.Normalize(mean=config.data.ifg_mean, std=config.data.ifg_std),
         ])
 
     test_transform = transforms.Compose([
-        transforms.Resize(256, interpolation=3),
+        # transforms.Resize(256, interpolation=3),
         transforms.CenterCrop(224),
         transforms.Grayscale(num_output_channels=3), # Grayscale transform, TODO check if MAE will function with single channel images
         transforms.ToTensor(),
         transforms.Normalize(mean=config.data.ifg_mean, std=config.data.ifg_std),
         ])
     
-    train_dataset = FullFrameDataset(config, mode="train", transform=train_transform)
-    val_dataset = FullFrameDataset(config, mode="val", transform=val_transform)
-    test_dataset = FullFrameDataset(config, mode="test", transform=test_transform)
+    # train_dataset = SupervisedDataset(config, mode="train", transform=train_transform)
+    # val_dataset = SupervisedDataset(config, mode="val", transform=val_transform)
+    # test_dataset = SupervisedDataset(config, mode="test", transform=test_transform)
+
+    # train_dataset = FullFrameDataset(config, mode="train", transform=train_transform)
+    # val_dataset = FullFrameDataset(config, mode="val", transform=val_transform)
+    # test_dataset = FullFrameDataset(config, mode="test", transform=test_transform)
+
+    ds = CustomImageFolderFT(dir='/scratch/SDF25/InSAR-ssl-finetune/LiCS-NZ-syn/', transform=None)
+    train_ss, val_ss = torch.utils.data.random_split(ds, [0.8, 0.2])
+    train_ds = DatasetFromSubset(train_ss, transform=train_transform)
+    val_ds = DatasetFromSubset(val_ss, transform=val_transform)
+
+    print(train_ds[0])
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset,
+        train_ds,
         batch_size=config.train.batch_size,
         shuffle=True,
         num_workers=config.train.num_workers,
@@ -78,7 +89,7 @@ def main(config: dict) -> None:
         )
 
     val_loader = torch.utils.data.DataLoader(
-        val_dataset,
+        val_ds,
         batch_size=config.train.val_batch_size,
         shuffle=False,
         num_workers=config.train.num_workers,
@@ -86,14 +97,14 @@ def main(config: dict) -> None:
         drop_last=False,
         )
 
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset,
-        batch_size=config.train.test_batch_size,
-        shuffle=False,
-        num_workers=config.train.num_workers,
-        pin_memory=True,
-        drop_last=False,
-        )
+    # test_loader = torch.utils.data.DataLoader(
+    #     test_dataset,
+    #     batch_size=config.train.test_batch_size,
+    #     shuffle=False,
+    #     num_workers=config.train.num_workers,
+    #     pin_memory=True,
+    #     drop_last=False,
+    #     )
 
     model = models_vit.__dict__[config.model.model](num_classes=config.data.num_classes, global_pool=config.model.global_pool)
 
@@ -165,44 +176,53 @@ def main(config: dict) -> None:
             log_writer=None,
             config=config)
         
-        val_acc, val_loss, v_counts = evaluate(val_loader, model, device)
-        test_acc, test_loss, test_counts = evaluate(test_loader, model, device)
+        val_acc, val_loss, v_counts, _, _ = evaluate(val_loader, model, device)
+        # test_acc, test_loss, test_counts, _, _ = evaluate(test_loader, model, device)
 
         val_loss = val_loss / v_counts
-        test_loss = test_loss / test_counts
+        # test_loss = test_loss / test_counts
         acc = val_acc / v_counts
-        test_acc = test_acc / test_counts
+        # test_acc = test_acc / test_counts
         print(f'Epoch {epoch} of {config.train.epochs}')
         print(f'train loss is {train_loss}')
         print(f'val loss is {val_loss}')
-        print(f'test loss is {test_loss}')
+        # print(f'test loss is {test_loss}')
         print(f'validation accuracy is {acc}')
-        print(f'test accuracy is {test_acc}')
+        # print(f'test accuracy is {test_acc}')
 
         train_epoch_loss.append(train_loss)
         val_epoch_loss.append(val_loss)
-        test_epoch_loss.append(test_loss) 
+        # test_epoch_loss.append(test_loss) 
         val_epoch_acc.append(acc)
-        test_epoch_acc.append(test_acc)
+        # test_epoch_acc.append(test_acc)
 
         if epoch % 5 == 0:
             fig, (ax1, ax2) = plt.subplots(2, sharex=True)
-            fig.suptitle('Hephaestus MAE Linear Probing (Train, Val, Test)')
+            fig.suptitle('Hephaestus 224 crop MAE Linear Probing (Train, Val, Test)')
             ax1.plot(range(len(train_epoch_loss)), np.array(train_epoch_loss), 'b', label='train')
             ax1.plot(range(len(val_epoch_loss)), np.array(val_epoch_loss), 'c', label='val')
-            ax1.plot(range(len(test_epoch_loss)), np.array(test_epoch_loss), 'm', label='test')
+            # ax1.plot(range(len(test_epoch_loss)), np.array(test_epoch_loss), 'm', label='test')
             ax1.legend(loc="upper right")
 
             ax1.set_ylabel('Cross Entropy Loss')
             ax2.plot(range(len(val_epoch_acc)), np.array(val_epoch_acc), 'c', label='val')
-            ax2.plot(range(len(test_epoch_acc)), np.array(test_epoch_acc), 'm', label='test')
+            # ax2.plot(range(len(test_epoch_acc)), np.array(test_epoch_acc), 'm', label='test')
             ax2.legend(loc="upper right")
             ax2.set_ylabel('Accuracy')
             plt.xlabel("Epochs")
-            plt.savefig('tmp/MAE_linear_probing_'+str(config.train.epochs)+'_epochs.png', dpi=300, format='png')
+            plt.savefig('tmp/224crop_MAE_linear_probing_'+str(config.train.epochs)+'_epochs.png', dpi=300, format='png')
+
+            save_dict = {
+                'epoch': epoch,
+                'arch' : config.model.model,
+                'model': model.state_dict(),
+                }
+            print('saving checkpoint')
+            torch.save(save_dict, config.model.checkpoint_save_path)
 
 
 
 if __name__ == '__main__':
+    print('TEST')
     config = load_global_config('configs/MAE_linear_train-eval_hephaestus.toml')
     main(config)

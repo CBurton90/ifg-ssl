@@ -21,12 +21,12 @@ checkpoint_path = 'model_checkpoints/SynInSAR_MAE_VitB16_224_no_oversampling.pth
 [train]
 device = 'cuda'
 batch_size = 256 # consider changing to 256
-val_batch_size = 32
+val_batch_size = 20
 c1_batch_size = 1
 blr = 1e-2 # consider changing to 1.5e-4
 min_lr = 0
 weight_decay = 0.0001
-epochs = 91
+epochs = 101
 warmup_epochs = 10
 num_workers = 32
 pin_memory = true

@@ -8,7 +8,7 @@ import torchvision.transforms.v2 as transforms
 
 # local imports
 from utils.config import load_global_config
-from hephaestus.dataset.Dataset import HephaestusCompleteDataset
+from hephaestus.dataset.Dataset import HephaestusCompleteDataset, FullFrameDataset
 
 def main():
 
@@ -43,9 +43,11 @@ def main():
 def hephaestus_mu_std():
 
     config = load_global_config('../hephaestus/configs/MAE_pretraining_hephaestus.toml')
+    # config = load_global_config('../hephaestus/configs/MAE_finetuning_hephaestus.toml')
     transform = transforms.Compose([transforms.Grayscale(num_output_channels=3), transforms.ToTensor()])
     train_dataset = HephaestusCompleteDataset(config, transform=transform)
-    train_dataloader = DataLoader(train_dataset, batch_size=1, num_workers=32, pin_memory=False, drop_last=False)
+    # train_dataset = FullFrameDataset(config, mode="train", transform=transforms.ToTensor())
+    train_dataloader = DataLoader(train_dataset, batch_size=1, num_workers=16, pin_memory=False, drop_last=False, shuffle=False)
 
     # placeholders
     mu = torch.tensor([0.0, 0.0, 0.0])
@@ -53,6 +55,10 @@ def hephaestus_mu_std():
     count = 0
 
     for idx, inputs in tqdm(enumerate(train_dataloader), total=len(train_dataloader)):
+
+        # print(inputs.shape)
+        # print(inputs.squeeze(0).max())
+        # print(inputs.squeeze(0).min())
 
         inp_mu = torch.mean(inputs.squeeze(0), dim=(1,2))
         inp_std = torch.std(inputs.squeeze(0), dim=(1,2))

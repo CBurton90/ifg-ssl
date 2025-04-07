@@ -4,6 +4,7 @@ sys.path.append("/home/conradb/git/ifg-ssl")
 import numpy as np
 import random
 import os
+import matplotlib.pyplot as plt
 
 import torch
 from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
@@ -139,7 +140,12 @@ def main(config):
 
     print(f"Start training for {config.train.epochs} epochs")
 
-    max_accuracy = 0.0
+    train_epoch_loss = []
+    val_epoch_loss = []
+    test_epoch_loss = []
+    val_epoch_acc = []
+    test_epoch_acc = []
+
     for epoch in range(0, config.train.epochs):
         
         train_loss = train_one_epoch(
@@ -149,8 +155,8 @@ def main(config):
             log_writer=None,
             config=config)
         
-        val_acc, val_loss, v_counts = evaluate(val_dataloader, model, device)
-        c1_acc, c1_loss, c1_counts = evaluate(c1_dataloader, model, device)
+        val_acc, val_loss, v_counts, _, _ = evaluate(val_dataloader, model, device)
+        c1_acc, c1_loss, c1_counts, _, _ = evaluate(c1_dataloader, model, device)
 
         val_loss = val_loss / v_counts
         c1_loss = c1_loss / c1_counts
@@ -162,6 +168,28 @@ def main(config):
         print(f'C1 loss is {c1_loss}')
         print(f'validation accuracy is {acc}')
         print(f'C1 accuracy is {c1_acc}')
+        
+        train_epoch_loss.append(train_loss)
+        val_epoch_loss.append(val_loss)
+        # test_epoch_loss.append(test_loss) 
+        val_epoch_acc.append(acc)
+        # test_epoch_acc.append(test_acc)
+
+        if epoch % 5 == 0:
+            fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+            fig.suptitle('Synthetic InSAR MAE Linear Probing (Train, Val)')
+            ax1.plot(range(len(train_epoch_loss)), np.array(train_epoch_loss), 'b', label='train')
+            ax1.plot(range(len(val_epoch_loss)), np.array(val_epoch_loss), 'c', label='val')
+            # ax1.plot(range(len(test_epoch_loss)), np.array(test_epoch_loss), 'm', label='test')
+            ax1.legend(loc="upper right")
+            ax1.set_ylabel('Cross Entropy Loss')
+
+            ax2.plot(range(len(val_epoch_acc)), np.array(val_epoch_acc), 'c', label='val')
+            # ax2.plot(range(len(test_epoch_acc)), np.array(test_epoch_acc), 'm', label='test')
+            ax2.legend(loc="upper right")
+            ax2.set_ylabel('Accuracy')
+            plt.xlabel("Epochs")
+            plt.savefig('outputs/syn_MAE_linear_probing_'+str(config.train.epochs)+'_epochs.png', dpi=300, format='png')
 
 
 if __name__ == '__main__':

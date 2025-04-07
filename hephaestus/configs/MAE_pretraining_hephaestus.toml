@@ -15,7 +15,7 @@ model = 'mae_vit_base_patch16'
 mask_ratio = 0.60
 norm_pix_loss= false
 pre_trained_ckpt = "/home/conradb/git/ifg-ssl/hephaestus/checkpoints/mae_pretrain_vit_base.pth"
-checkpoint_save_path = '/home/conradb/git/ifg-ssl/hephaestus/checkpoints/Hephaestus_MAE_VitB16_224_no_os_norm_1000e_60msk_1-5e4lr.pth'
+checkpoint_save_path = '/home/conradb/git/ifg-ssl/hephaestus/checkpoints/Hephaestus_complete_MAE_VitB16_224_norm_700e_60msk_1-5e4lr.pth'
 
 [train]
 device = 'cuda'
@@ -23,7 +23,7 @@ batch_size = 256 # consider changing to 256
 blr = 1.5e-4 # consider changing to 1.5e-4
 min_lr = 0
 weight_decay = 0.05
-epochs = 1001
+epochs = 701
 warmup_epochs = 50
 num_workers = 32
 # pin_memory = true

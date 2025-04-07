@@ -14,10 +14,11 @@ model = 'vit_base_patch16'
 global_pool = false
 drop_path = 0.1
 layer_decay = 0.75
-checkpoint_path = 'checkpoints/Hephaestus_MAE_VitB16_224_no_os_norm_1000e_60msk_1-5e4lr.pth'
+checkpoint_path = 'checkpoints/Hephaestus_complete_MAE_VitB16_224_norm_700e_60msk_1-5e4lr.pth'
+checkpoint_save_path = 'checkpoints/Hephaestus_MAE_VitB16_224_norm_700e_60msk_1-5e4lr-finetune.pth'
 
 [train]
-device = 'cuda'
+device = 'cpu'
 oversampling = true
 batch_size = 256
 val_batch_size = 128

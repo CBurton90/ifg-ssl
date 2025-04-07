@@ -5,7 +5,7 @@
 #SBATCH --mem 100G
 #SBATCH --gpus-per-node=1
 #SBATCH --cpus-per-task=64
-#SBATCH -o logs/MAE_linear_train-eval_hephaestus.out
+#SBATCH -o logs/MAE_linear_train-eval_hephaestus_224crop.out
 
 module load Miniconda3
 eval "$(conda shell.bash hook)"
