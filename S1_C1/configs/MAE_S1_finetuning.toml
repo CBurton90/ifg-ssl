@@ -1,0 +1,28 @@
+[data]
+input_size = 224
+mean = [0.4156, 0.4156, 0.4156] # Synthetic InSAR
+std = [0.4223, 0.4223, 0.4223] # Synthetic InSAR
+train_path = '/scratch/SDF25/PrototypeInSAR/synth/' # U:\scratch\SDF25\PrototypeInSAR\synth
+val_path = '/scratch/SDF25/PrototypeInSAR/validation_synthetic'
+c1_path = '/scratch/SDF25/DeepCube_UC4a/C1/'
+num_classes = 2
+
+[model]
+model = 'vit_base_patch16'
+global_pool = false
+drop_path = 0.1
+layer_decay = 0.75
+checkpoint_path = 'model_checkpoints/SynInSAR_MAE_VitB16_224_no_oversampling.pth'
+
+[train]
+device = 'cuda'
+batch_size = 256
+val_batch_size = 20
+c1_batch_size = 1
+blr = 1e-5
+min_lr = 0
+weight_decay = 0.15
+epochs = 51
+warmup_epochs = 3
+num_workers = 32
+pin_memory = true
